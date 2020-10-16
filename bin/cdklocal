@@ -1,0 +1,86 @@
+#!/usr/bin/env node
+
+const provider = require('aws-cdk/lib/api/aws-auth/sdk-provider');
+const { CdkToolkit } = require('aws-cdk/lib/cdk-toolkit');
+const { SDK } = require('aws-cdk/lib/api/aws-auth/sdk');
+
+const DEFAULT_EDGE_PORT = 4566;
+const DEFAULT_HOSTNAME = 'localhost';
+
+//----------------
+// UTIL FUNCTIONS
+//----------------
+
+const getLocalEndpoint = () => {
+  const port = process.env.EDGE_PORT || DEFAULT_EDGE_PORT;
+  const host = process.env.LOCALSTACK_HOSTNAME || DEFAULT_HOSTNAME;
+  return `http://${host}:${port}`;
+};
+
+const useLocal = (options) => {
+  // TODO make configurable..?
+  return true;
+};
+
+const setOptions = (options, setHttpOptions) => {
+  if (!useLocal(options)) return;
+  if (setHttpOptions) {
+    options = options.httpOptions = options.httpOptions || {};
+  }
+  options.endpoint = getLocalEndpoint();
+  options.s3ForcePathStyle = true;
+  options.accessKeyId = 'test';
+  options.secretAccessKey = 'test';
+};
+
+const getMethods = (obj) => {
+  let properties = new Set();
+  let currentObj = obj;
+  do {
+    Object.getOwnPropertyNames(currentObj).map(item => properties.add(item));
+  } while ((currentObj = Object.getPrototypeOf(currentObj)));
+  const excluded = [
+    'caller', 'callee', 'arguments', 'constructor', 'isPrototypeOf',
+    'hasOwnProperty', 'valueOf', 'toString', 'toLocaleString', 'propertyIsEnumerable'
+  ];
+  const props = [...properties.keys()].filter(p => !excluded.includes(p) && !p.startsWith('__'));
+  return props.filter(item => typeof obj[item] === 'function')
+}
+
+//---------
+// PATCHES
+//---------
+
+const origConstr = provider.SdkProvider.withAwsCliCompatibleDefaults;
+provider.SdkProvider.withAwsCliCompatibleDefaults = async (options = {}) => {
+  setOptions(options, true);
+  return origConstr(options);
+};
+
+provider.SdkProvider.prototype.defaultCredentials = () => {
+  return {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
+  };
+};
+
+const currentAccount = SDK.prototype.currentAccount;
+SDK.prototype.currentAccount = async function () {
+  const config = this.config;
+  setOptions(config);
+  return currentAccount.bind(this)();
+};
+
+getMethods(CdkToolkit.prototype).forEach(meth => {
+  const original = CdkToolkit.prototype[meth];
+  CdkToolkit.prototype[meth] = function() {
+    setOptions(this.props.sdkProvider.sdkOptions);
+    return original.bind(this).apply(this, arguments);
+  }
+});
+
+//----------
+// MAIN CLI
+//----------
+
+require('aws-cdk/bin/cdk');

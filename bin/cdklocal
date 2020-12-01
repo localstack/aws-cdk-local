@@ -3,6 +3,8 @@
 const provider = require('aws-cdk/lib/api/aws-auth/sdk-provider');
 const { CdkToolkit } = require('aws-cdk/lib/cdk-toolkit');
 const { SDK } = require('aws-cdk/lib/api/aws-auth/sdk');
+const { BUCKET_NAME_OUTPUT, BUCKET_DOMAIN_NAME_OUTPUT } = require("aws-cdk/lib/api/bootstrap/bootstrap-props");
+const { ToolkitInfo }  = require('aws-cdk/lib/api');
 
 const DEFAULT_EDGE_PORT = 4566;
 const DEFAULT_HOSTNAME = 'localhost';
@@ -76,6 +78,14 @@ getMethods(CdkToolkit.prototype).forEach(meth => {
   CdkToolkit.prototype[meth] = function() {
     setOptions(this.props.sdkProvider.sdkOptions);
     return original.bind(this).apply(this, arguments);
+  }
+});
+
+Object.defineProperty(ToolkitInfo.prototype, 'bucketUrl', {
+  get() {
+    const bucket = this.requireOutput(BUCKET_NAME_OUTPUT);
+    const domain = this.requireOutput(BUCKET_DOMAIN_NAME_OUTPUT);
+    return `https://${domain.replace(`${bucket}.`, '')}/${bucket}`
   }
 });
 

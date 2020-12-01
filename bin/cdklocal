@@ -85,7 +85,7 @@ Object.defineProperty(ToolkitInfo.prototype, 'bucketUrl', {
   get() {
     const bucket = this.requireOutput(bootstrap.BUCKET_NAME_OUTPUT);
     const domain = this.requireOutput(bootstrap.BUCKET_DOMAIN_NAME_OUTPUT);
-    return `https://${domain.replace(bucket, '')}/${bucket}`
+    return `https://${domain.replace(`${bucket}.`, '')}/${bucket}`
   }
 });
 

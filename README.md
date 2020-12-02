@@ -57,6 +57,11 @@ $ awslocal sns list-topics
 }
 ```
 
+## Change Log
+
+* 1.65.1: Override BucketURL to use path style addressing
+* 1.65.0: Initial release
+
 ## License
 
 The AWS CDK is distributed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).

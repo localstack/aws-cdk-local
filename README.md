@@ -8,11 +8,14 @@ This project provides a thin wrapper script `cdklocal` for using the [AWS CDK](h
 
 The `cdklocal` command line is published as an [npm library](https://www.npmjs.com/package/aws-cdk-local):
 ```
-$ npm install aws-cdk-local
+$ npm install aws-cdk-local aws-cdk
 ...
 $ cdklocal --version
-1.65.0
+1.65.2
 ```
+
+**Note:** Starting with version `1.65.2`, the dependency `aws-cdk` needs to be installed manually
+(to decouple the two libraries, and allow using arbitrary versions of `aws-cdk` under the covers).
 
 ## Configurations
 
@@ -59,6 +62,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 1.65.2: Patch missing getPromise() in forceCredentialRetrieval; remove aws-cdk from npm dependencies
 * 1.65.1: Override BucketURL to use path style addressing
 * 1.65.0: Initial release
 

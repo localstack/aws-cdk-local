@@ -73,6 +73,14 @@ SDK.prototype.currentAccount = async function () {
   return currentAccount.bind(this)();
 };
 
+const forceCredentialRetrieval = SDK.prototype.forceCredentialRetrieval;
+SDK.prototype.forceCredentialRetrieval = async function () {
+  if (!this._credentials.getPromise) {
+    this._credentials.getPromise = () => this._credentials;
+  }
+  return forceCredentialRetrieval.bind(this)();
+};
+
 getMethods(CdkToolkit.prototype).forEach(meth => {
   const original = CdkToolkit.prototype[meth];
   CdkToolkit.prototype[meth] = function() {

@@ -1,7 +1,7 @@
 {
   "name": "aws-cdk-local",
   "description": "CDK Toolkit for use with LocalStack",
-  "version": "1.65.1",
+  "version": "1.65.2",
   "bin": {
     "cdklocal": "bin/cdklocal"
   },
@@ -11,7 +11,6 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "aws-cdk": ">1.64.1"
   },
   "repository": {
     "url": "https://github.com/localstack/aws-cdk-local.git",

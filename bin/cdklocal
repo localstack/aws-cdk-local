@@ -13,10 +13,12 @@ const DEFAULT_HOSTNAME = 'localhost';
 // UTIL FUNCTIONS
 //----------------
 
-const getLocalEndpoint = () => {
+const getLocalEndpoint = () => `http://${getLocalHost()}`;
+
+const getLocalHost = () => {
   const port = process.env.EDGE_PORT || DEFAULT_EDGE_PORT;
   const host = process.env.LOCALSTACK_HOSTNAME || DEFAULT_HOSTNAME;
-  return `http://${host}:${port}`;
+  return `${host}:${port}`;
 };
 
 const useLocal = (options) => {
@@ -92,7 +94,7 @@ getMethods(CdkToolkit.prototype).forEach(meth => {
 Object.defineProperty(ToolkitInfo.prototype, 'bucketUrl', {
   get() {
     const bucket = this.requireOutput(BUCKET_NAME_OUTPUT);
-    const domain = this.requireOutput(BUCKET_DOMAIN_NAME_OUTPUT);
+    const domain = this.requireOutput(BUCKET_DOMAIN_NAME_OUTPUT) || getLocalHost();
     return `https://${domain.replace(`${bucket}.`, '')}/${bucket}`
   }
 });

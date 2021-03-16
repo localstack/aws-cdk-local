@@ -102,6 +102,8 @@ function setBucketUrl(object) {
   });
 }
 
+setBucketUrl(ToolkitInfo.prototype); //compatible with older version of CDK
+
 const cdkLookupFn = ToolkitInfo.lookup
 ToolkitInfo.lookup = async function(...args) {
   const toolkitInfoObject = await cdkLookupFn(...args);

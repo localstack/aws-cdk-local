@@ -15,8 +15,9 @@ const DEFAULT_HOSTNAME = 'localhost';
 
 const getLocalEndpoint = () => `http://${getLocalHost()}`;
 
-const getLocalHost = () => {
-  const port = process.env.EDGE_PORT || DEFAULT_EDGE_PORT;
+const port = process.env.EDGE_PORT || DEFAULT_EDGE_PORT;
+
+const getLocalHost = () => {  
   const host = process.env.LOCALSTACK_HOSTNAME || DEFAULT_HOSTNAME;
   return `${host}:${port}`;
 };
@@ -91,13 +92,29 @@ getMethods(CdkToolkit.prototype).forEach(meth => {
   }
 });
 
-Object.defineProperty(ToolkitInfo.prototype, 'bucketUrl', {
-  get() {
-    const bucket = this.requireOutput(BUCKET_NAME_OUTPUT);
-    const domain = this.requireOutput(BUCKET_DOMAIN_NAME_OUTPUT) || getLocalHost();
-    return `https://${domain.replace(`${bucket}.`, '')}/${bucket}`
-  }
-});
+function setBucketUrl(object) {
+  Object.defineProperty(object, 'bucketUrl', {
+    get() {
+      const bucket = this.requireOutput(BUCKET_NAME_OUTPUT);
+      const domain = this.requireOutput(BUCKET_DOMAIN_NAME_OUTPUT) || getLocalHost();
+      return `https://${domain.replace(`${bucket}.`, '')}:${port}/${bucket}`
+    }
+  });
+}
+
+const cdkLookupFn = ToolkitInfo.lookup
+ToolkitInfo.lookup = async function(...args) {
+  const toolkitInfoObject = await cdkLookupFn(...args);
+  setBucketUrl(toolkitInfoObject);
+  return toolkitInfoObject;
+}
+
+const fromStackFn = ToolkitInfo.fromStack
+ToolkitInfo.fromStack = function(...args) {
+  const toolkitInfoObject = fromStackFn(...args);
+  setBucketUrl(toolkitInfoObject);
+  return toolkitInfoObject;
+}
 
 //----------
 // MAIN CLI

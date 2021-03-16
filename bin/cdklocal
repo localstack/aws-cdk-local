@@ -3,7 +3,9 @@
 const provider = require('aws-cdk/lib/api/aws-auth/sdk-provider');
 const { CdkToolkit } = require('aws-cdk/lib/cdk-toolkit');
 const { SDK } = require('aws-cdk/lib/api/aws-auth/sdk');
-const { BUCKET_NAME_OUTPUT, BUCKET_DOMAIN_NAME_OUTPUT } = require("aws-cdk/lib/api/bootstrap/bootstrap-props");
+const {
+  BUCKET_NAME_OUTPUT, BUCKET_DOMAIN_NAME_OUTPUT
+} = require("aws-cdk/lib/api/bootstrap/bootstrap-props");
 const { ToolkitInfo }  = require('aws-cdk/lib/api');
 
 const DEFAULT_EDGE_PORT = 4566;
@@ -17,7 +19,7 @@ const getLocalEndpoint = () => `http://${getLocalHost()}`;
 
 const port = process.env.EDGE_PORT || DEFAULT_EDGE_PORT;
 
-const getLocalHost = () => {  
+const getLocalHost = () => {
   const host = process.env.LOCALSTACK_HOSTNAME || DEFAULT_HOSTNAME;
   return `${host}:${port}`;
 };
@@ -102,7 +104,8 @@ function setBucketUrl(object) {
   });
 }
 
-setBucketUrl(ToolkitInfo.prototype); //compatible with older version of CDK
+// for compatibility with with older versions of CDK
+setBucketUrl(ToolkitInfo.prototype);
 
 const cdkLookupFn = ToolkitInfo.lookup
 ToolkitInfo.lookup = async function(...args) {

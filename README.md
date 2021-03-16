@@ -62,6 +62,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 1.65.4: Add support for large stacks by patching bucketUrl for ToolkitInfo
 * 1.65.2: Patch missing getPromise() in forceCredentialRetrieval; remove aws-cdk from npm dependencies
 * 1.65.1: Override BucketURL to use path style addressing
 * 1.65.0: Initial release

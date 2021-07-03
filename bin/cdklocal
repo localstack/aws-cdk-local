@@ -3,13 +3,17 @@
 const provider = require('aws-cdk/lib/api/aws-auth/sdk-provider');
 const { CdkToolkit } = require('aws-cdk/lib/cdk-toolkit');
 const { SDK } = require('aws-cdk/lib/api/aws-auth/sdk');
+const { ToolkitInfo }  = require('aws-cdk/lib/api');
+const deployStackMod = require('aws-cdk/lib/api/deploy-stack');
 const {
   BUCKET_NAME_OUTPUT, BUCKET_DOMAIN_NAME_OUTPUT
 } = require("aws-cdk/lib/api/bootstrap/bootstrap-props");
-const { ToolkitInfo }  = require('aws-cdk/lib/api');
+const { FileAssetHandler } = require('aws-cdk/node_modules/cdk-assets/lib/private/handlers/files');
 
 const DEFAULT_EDGE_PORT = 4566;
 const DEFAULT_HOSTNAME = 'localhost';
+const LAMBDA_MOUNT_CODE = ['1', 'true'].includes(process.env.LAMBDA_MOUNT_CODE);
+
 
 //----------------
 // UTIL FUNCTIONS
@@ -120,6 +124,47 @@ ToolkitInfo.fromStack = function(...args) {
   setBucketUrl(toolkitInfoObject);
   return toolkitInfoObject;
 }
+
+// modify asset paths to enable local Lambda code mounting
+
+const deployStackOrig = deployStackMod.deployStack;
+deployStackMod.deployStack = async function deployStack(options) {
+  options.sdk.cloudFormationOrig = options.sdk.cloudFormationOrig || options.sdk.cloudFormation;
+  const state = {};
+  options.sdk.cloudFormation = function() {
+    return state.instance;
+  }
+  const cfn = state.instance = options.sdk.cloudFormationOrig();
+  cfn.createChangeSetOrig = cfn.createChangeSetOrig || cfn.createChangeSet;
+  cfn.createChangeSet = function(params) {
+    if (LAMBDA_MOUNT_CODE) {
+      (params.Parameters || []).forEach((item) => {
+        // TODO: create a more resilient lookup mechanism (not based on 'S3Bucket' param key) below!
+        if (item.ParameterKey.includes('S3Bucket')) {
+          item.ParameterValue = '__local__';
+        }
+        const parts = item.ParameterValue.split('||');
+        if (item.ParameterKey.includes('S3VersionKey') && item.ParameterValue.endsWith('.zip') && parts.length > 1) {
+          item.ParameterValue = `${process.cwd()}/||cdk.out/asset.${parts[1].replace('.zip', '')}`;
+        }
+      });
+    }
+    return cfn.createChangeSetOrig(params)
+  };
+  const result = deployStackOrig(options);
+  return result;
+}
+
+const handlerPublish = FileAssetHandler.prototype.publish;
+FileAssetHandler.prototype.publish = async function() {
+  if (LAMBDA_MOUNT_CODE && this.asset.destination && this.asset.source) {
+    if (this.asset.source.packaging === 'zip') {
+      // skip uploading this asset - should get mounted via `__file__` into the Lambda container later on
+      return;
+    }
+  }
+  return handlerPublish.bind(this)();
+};
 
 //----------
 // MAIN CLI

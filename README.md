@@ -11,7 +11,7 @@ The `cdklocal` command line is published as an [npm library](https://www.npmjs.c
 $ npm install aws-cdk-local aws-cdk
 ...
 $ cdklocal --version
-1.65.2
+1.65.5
 ```
 
 **Note:** Starting with version `1.65.2`, the dependency `aws-cdk` needs to be installed manually
@@ -23,6 +23,7 @@ The following environment variables can be configured:
 
 * `EDGE_PORT`: Port under which LocalStack edge service is accessible (default: `4566`)
 * `LOCALSTACK_HOSTNAME`: Target host under which LocalStack edge service is accessible (default: `localhost`)
+* `LAMBDA_MOUNT_CODE`: Whether to use local Lambda code mounting (via setting `__local__` S3 bucket name)
 
 ## Deploying a Sample App
 
@@ -62,6 +63,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 1.65.5: Add support for `LAMBDA_MOUNT_CODE` config to enable local Lambda code mounting
 * 1.65.4: Add support for large stacks by patching bucketUrl for ToolkitInfo
 * 1.65.2: Patch missing getPromise() in forceCredentialRetrieval; remove aws-cdk from npm dependencies
 * 1.65.1: Override BucketURL to use path style addressing

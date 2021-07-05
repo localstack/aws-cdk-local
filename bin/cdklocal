@@ -203,7 +203,11 @@ const symlinkLambdaAssets = function(template, parameters) {
     const funcName = lookupLambdaForAsset(template, paramKey);
     const lambdaAsset = `cdk.out/asset.lambda.${funcName}`;
     if (fs.existsSync(lambdaAsset)) fs.unlinkSync(lambdaAsset);
-    fs.symlinkSync(`asset.${assetId}`, lambdaAsset);
+
+    if (fs.existsSync(`cdk.out/asset.${assetId}`)) {
+      fs.symlinkSync(`asset.${assetId}`, lambdaAsset);
+    }
+
     item.ParameterValue = `${process.cwd()}/||${lambdaAsset}`;
   });
 };

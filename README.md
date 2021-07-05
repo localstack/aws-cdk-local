@@ -63,6 +63,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 1.65.6: Create symlinks to Lambda assets to enable persistent code mounting of Lambdas on "cdklocal synth"
 * 1.65.5: Add support for `LAMBDA_MOUNT_CODE` config to enable local Lambda code mounting
 * 1.65.4: Add support for large stacks by patching bucketUrl for ToolkitInfo
 * 1.65.2: Patch missing getPromise() in forceCredentialRetrieval; remove aws-cdk from npm dependencies

@@ -1,9 +1,15 @@
 #!/usr/bin/env node
 
+const fs = require('fs');
+const diff = require('diff');
+const http = require('http');
+const https = require('https');
+const crypto = require('crypto');
 const provider = require('aws-cdk/lib/api/aws-auth/sdk-provider');
 const { CdkToolkit } = require('aws-cdk/lib/cdk-toolkit');
 const { SDK } = require('aws-cdk/lib/api/aws-auth/sdk');
 const { ToolkitInfo }  = require('aws-cdk/lib/api');
+const { deserializeStructure } = require('aws-cdk/lib/serialize');
 const deployStackMod = require('aws-cdk/lib/api/deploy-stack');
 const {
   BUCKET_NAME_OUTPUT, BUCKET_DOMAIN_NAME_OUTPUT
@@ -33,6 +39,8 @@ const useLocal = (options) => {
   return true;
 };
 
+const md5 = s => crypto.createHash('md5').update(s).digest('hex');
+
 const setOptions = (options, setHttpOptions) => {
   if (!useLocal(options)) return;
   if (setHttpOptions) {
@@ -57,6 +65,34 @@ const getMethods = (obj) => {
   const props = [...properties.keys()].filter(p => !excluded.includes(p) && !p.startsWith('__'));
   return props.filter(item => typeof obj[item] === 'function')
 }
+
+const getTemplateBody = (params) => {
+  if (params.TemplateBody) {
+    return params.TemplateBody;
+  }
+  return fetchURLAsync(params.TemplateURL);
+}
+
+const fetchURLAsync = (url) => {
+  // simple helper function to fetch an HTTP URL in a promisified way
+  return new Promise((resolve, reject) => {
+    const httpClient = url.includes('https://') ? https : http;
+    const req = httpClient.get(url, {rejectUnauthorized: false}, (res) => {
+      let responseBody = '';
+      res.on('data', (chunk) => {
+        responseBody += chunk;
+      });
+      res.on('end', () => {
+        const result = deserializeStructure(responseBody || '{}');
+        resolve(result);
+      });
+    });
+    req.on('error', (err) => {
+      reject(err);
+    });
+    req.end();
+  });
+};
 
 //---------
 // PATCHES
@@ -127,6 +163,53 @@ ToolkitInfo.fromStack = function(...args) {
 
 // modify asset paths to enable local Lambda code mounting
 
+const lookupLambdaForAsset = (template, paramName) => {
+  const result = Object.keys(template.Resources)
+    .map((k) => template.Resources[k])
+    .filter((r) => r.Type === 'AWS::Lambda::Function')
+    .filter((r) => JSON.stringify(r.Properties.Code.S3Key).includes(paramName));
+  const props = result[0].Properties;
+  const funcName = props.FunctionName;
+  if (funcName) return funcName;
+  const attributes = ['Handler', 'Runtime', 'Description', 'Timeout', 'MemorySize', 'Environment'];
+  const valueToHash = attributes.map((a) => props[a])
+    .map((v) => !v ? '' : typeof v === 'object' ? JSON.stringify(diff.canonicalize(v)) : v)
+    .join('|');
+  return md5(valueToHash);
+}
+
+const symlinkLambdaAssets = function(template, parameters) {
+  const params = parameters || template.Parameters || {};
+  Object.keys(params).forEach((key) => {
+    const item = params[key];
+    const paramKey = item.ParameterKey || key;
+    // TODO: create a more resilient lookup mechanism (not based on 'S3Bucket' param key) below!
+    if (item.ParameterKey && item.ParameterKey.includes('S3Bucket')) {
+      item.ParameterValue = '__local__';
+    }
+    if (!paramKey.includes('S3VersionKey')) {
+      return;
+    }
+    let assetId = '';
+    if (item.ParameterValue) {
+      const parts = item.ParameterValue.split('||');
+      if (item.ParameterValue.endsWith('.zip') && parts.length > 1) {
+        assetId = parts[1].replace('.zip', '');
+      }
+    }
+    if (!assetId) {
+      assetId = paramKey.replace('AssetParameters', '').split('S3VersionKey')[0];
+    }
+    const funcName = lookupLambdaForAsset(template, paramKey);
+    const lambdaAsset = `cdk.out/asset.lambda.${funcName}`;
+    if (fs.existsSync(lambdaAsset)) fs.unlinkSync(lambdaAsset);
+    fs.symlinkSync(`asset.${assetId}`, lambdaAsset);
+    item.ParameterValue = `${process.cwd()}/||${lambdaAsset}`;
+  });
+};
+
+// symlink local Lambda assets if "cdklocal deploy" is called with LAMBDA_MOUNT_CODE=1
+
 const deployStackOrig = deployStackMod.deployStack;
 deployStackMod.deployStack = async function deployStack(options) {
   options.sdk.cloudFormationOrig = options.sdk.cloudFormationOrig || options.sdk.cloudFormation;
@@ -136,24 +219,19 @@ deployStackMod.deployStack = async function deployStack(options) {
   }
   const cfn = state.instance = options.sdk.cloudFormationOrig();
   cfn.createChangeSetOrig = cfn.createChangeSetOrig || cfn.createChangeSet;
-  cfn.createChangeSet = function(params) {
+  const createChangeSetAsync = async function(params) {
     if (LAMBDA_MOUNT_CODE) {
-      (params.Parameters || []).forEach((item) => {
-        // TODO: create a more resilient lookup mechanism (not based on 'S3Bucket' param key) below!
-        if (item.ParameterKey.includes('S3Bucket')) {
-          item.ParameterValue = '__local__';
-        }
-        const parts = item.ParameterValue.split('||');
-        if (item.ParameterKey.includes('S3VersionKey') && item.ParameterValue.endsWith('.zip') && parts.length > 1) {
-          item.ParameterValue = `${process.cwd()}/||cdk.out/asset.${parts[1].replace('.zip', '')}`;
-        }
-      });
+      const template = await getTemplateBody(params);
+      symlinkLambdaAssets(template, params.Parameters);
     }
-    return cfn.createChangeSetOrig(params)
+    return cfn.createChangeSetOrig(params).promise();
   };
+  cfn.createChangeSet = (params) => ({promise: () => createChangeSetAsync(params)});
   const result = deployStackOrig(options);
   return result;
 }
+
+// skip uploading Lambda assets if LAMBDA_MOUNT_CODE=1
 
 const handlerPublish = FileAssetHandler.prototype.publish;
 FileAssetHandler.prototype.publish = async function() {
@@ -165,6 +243,21 @@ FileAssetHandler.prototype.publish = async function() {
   }
   return handlerPublish.bind(this)();
 };
+
+// symlink local Lambda assets if "cdklocal synth" is called with LAMBDA_MOUNT_CODE=1
+
+const assemblyOrig = CdkToolkit.prototype.assembly;
+CdkToolkit.prototype.assembly = async function() {
+  const result = await assemblyOrig.bind(this)();
+  if (LAMBDA_MOUNT_CODE) {
+    result.assembly.artifacts.forEach(
+      (art) => {
+        symlinkLambdaAssets(art._template || {});
+      }
+    );
+  }
+  return result;
+}
 
 //----------
 // MAIN CLI

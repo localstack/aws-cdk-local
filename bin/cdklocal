@@ -201,8 +201,9 @@ const symlinkLambdaAssets = function(template, parameters) {
     }
     const funcName = lookupLambdaForAsset(template, paramKey);
     const lambdaAsset = `cdk.out/asset.lambda.${funcName}`;
-    if (fs.existsSync(lambdaAsset)) fs.unlinkSync(lambdaAsset);
-
+    if (fs.existsSync(lambdaAsset)) {
+      fs.unlinkSync(lambdaAsset);  // delete any existing symlinks
+    }
     if (fs.existsSync(`cdk.out/asset.${assetId}`)) {
       fs.symlinkSync(`asset.${assetId}`, lambdaAsset);
     }

@@ -63,6 +63,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 1.65.7: Add switch that checks for asset existence before symlinking assets; fix parsing fetched template body for JSON/YAML formats; add missing dependency to "diff" package
 * 1.65.6: Create symlinks to Lambda assets to enable persistent code mounting of Lambdas on "cdklocal synth"
 * 1.65.5: Add support for `LAMBDA_MOUNT_CODE` config to enable local Lambda code mounting
 * 1.65.4: Add support for large stacks by patching bucketUrl for ToolkitInfo

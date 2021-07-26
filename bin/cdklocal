@@ -83,8 +83,7 @@ const fetchURLAsync = (url) => {
         responseBody += chunk;
       });
       res.on('end', () => {
-        const result = deserializeStructure(responseBody || '{}');
-        resolve(result);
+        resolve(responseBody || '{}');
       });
     });
     req.on('error', (err) => {
@@ -225,7 +224,7 @@ deployStackMod.deployStack = async function deployStack(options) {
   cfn.createChangeSetOrig = cfn.createChangeSetOrig || cfn.createChangeSet;
   const createChangeSetAsync = async function(params) {
     if (LAMBDA_MOUNT_CODE) {
-      const template = await getTemplateBody(params);
+      const template = deserializeStructure(await getTemplateBody(params));
       symlinkLambdaAssets(template, params.Parameters);
     }
     return cfn.createChangeSetOrig(params).promise();

@@ -11,6 +11,7 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
+    "diff": "^5.0.0"
   },
   "repository": {
     "url": "https://github.com/localstack/aws-cdk-local.git",

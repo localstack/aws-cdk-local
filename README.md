@@ -8,7 +8,7 @@ This project provides a thin wrapper script `cdklocal` for using the [AWS CDK](h
 
 The `cdklocal` command line is published as an [npm library](https://www.npmjs.com/package/aws-cdk-local):
 ```
-$ npm install aws-cdk-local aws-cdk
+$ npm install -g aws-cdk-local aws-cdk
 ...
 $ cdklocal --version
 1.65.5
@@ -16,6 +16,8 @@ $ cdklocal --version
 
 **Note:** Starting with version `1.65.2`, the dependency `aws-cdk` needs to be installed manually
 (to decouple the two libraries, and allow using arbitrary versions of `aws-cdk` under the covers).
+
+(Note: Depending on your local setup, you may or may not have to use the global `npm` installation flag `-g` above.)
 
 ## Configurations
 

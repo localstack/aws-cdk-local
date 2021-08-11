@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const diff = require('diff');
+const path = require('path');
 const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
@@ -14,7 +15,22 @@ const deployStackMod = require('aws-cdk/lib/api/deploy-stack');
 const {
   BUCKET_NAME_OUTPUT, BUCKET_DOMAIN_NAME_OUTPUT
 } = require("aws-cdk/lib/api/bootstrap/bootstrap-props");
-const { FileAssetHandler } = require('aws-cdk/node_modules/cdk-assets/lib/private/handlers/files');
+
+// small import util function
+
+const modulePrefix = 'aws-cdk/node_modules';
+const importLib = function(libPath) {
+  try {
+    return require(path.join(modulePrefix, libPath));
+  } catch (e) {
+    return require(path.join(libPath));
+  }
+}
+
+// import CDK assets
+const { FileAssetHandler } = importLib('cdk-assets/lib/private/handlers/files');
+
+// config constants
 
 const DEFAULT_EDGE_PORT = 4566;
 const DEFAULT_HOSTNAME = 'localhost';

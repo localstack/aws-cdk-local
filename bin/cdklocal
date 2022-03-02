@@ -287,10 +287,12 @@ const patchLambdaMounting = (CdkToolkit) => {
 };
 
 const isEsbuildBundle = () => {
-  // simple heuristic to determine whether this is a new esbuild bundle (CDK v2.14.0+)
+  // simple heuristic to determine whether this is a new esbuild bundle (CDK v2.14.0+),
+  // based on this change which replaced `__dirname` with `rootDir()`:
+  // https://github.com/aws/aws-cdk/pull/18667/files#diff-6902a5fbdd9dfe9dc5563fe7d7d156e4fd99f945ac3977390d6aaacdd0370f82
   try {
     const directories = require('aws-cdk/lib/util/directories');
-    return directories && directories.rootDir
+    return directories && directories.rootDir;
   } catch (e) {
     return false;
   }

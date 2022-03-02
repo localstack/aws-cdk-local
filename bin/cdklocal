@@ -116,7 +116,8 @@ const patchProviderCredentials = (provider) => {
 };
 
 const patchCdkToolkit = (CdkToolkit) => {
-  getMethods(CdkToolkit.ToolkitInfo.prototype).forEach(meth => {
+  CdkToolkit = CdkToolkit.ToolkitInfo || CdkToolkit;
+  getMethods(CdkToolkit.prototype).forEach(meth => {
     const original = CdkToolkit.prototype[meth];
     CdkToolkit.prototype[meth] = function() {
       setSdkOptions(this.props.sdkProvider.sdkOptions);
@@ -172,7 +173,7 @@ const patchToolkitInfo = (ToolkitInfo) => {
   }
 };
 
-const patchLambdaMounting = () => {
+const patchLambdaMounting = (CdkToolkit) => {
   const { deserializeStructure } = require('aws-cdk/lib/serialize');
   const deployStackMod = require('aws-cdk/lib/api/deploy-stack');
   const {
@@ -285,13 +286,23 @@ const patchLambdaMounting = () => {
   }
 };
 
+const isEsbuildBundle = () => {
+  // simple heuristic to determine whether this is a new esbuild bundle (CDK v2.14.0+)
+  try {
+    const directories = require('aws-cdk/lib/util/directories');
+    return directories && directories.rootDir
+  } catch (e) {
+    return false;
+  }
+};
+
 const applyPatches = (provider, CdkToolkit, SDK, ToolkitInfo, patchAssets=true) => {
   patchProviderCredentials(provider);
   patchCdkToolkit(CdkToolkit);
   patchCurrentAccount(SDK);
   patchToolkitInfo(ToolkitInfo);
   // patch asset handling for Lambda code mounting - TODO currently failing for CDK v2.14.0+
-  if (patchAssets) patchLambdaMounting();
+  if (patchAssets) patchLambdaMounting(CdkToolkit);
 };
 
 const patchPre_2_14 = () => {
@@ -309,11 +320,11 @@ const patchPost_2_14 = () => {
   applyPatches(lib, lib, lib.SDK, lib.ToolkitInfo, false);
 }
 
-try {
+if (isEsbuildBundle()) {
   // load for CDK version 2.14.0 and above
   // (v2.14.0+ uses a self-contained bundle, see https://github.com/aws/aws-cdk/pull/18667)
   patchPost_2_14();
-} catch (e) {
+} else {
   // fall back to loading for CDK version 2.13.0 and below
   patchPre_2_14();
 }

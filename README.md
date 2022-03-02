@@ -25,7 +25,7 @@ The following environment variables can be configured:
 
 * `EDGE_PORT`: Port under which LocalStack edge service is accessible (default: `4566`)
 * `LOCALSTACK_HOSTNAME`: Target host under which LocalStack edge service is accessible (default: `localhost`)
-* `LAMBDA_MOUNT_CODE`: Whether to use local Lambda code mounting (via setting `__local__` S3 bucket name)
+* `LAMBDA_MOUNT_CODE`: Whether to use local Lambda code mounting (via setting `__local__` S3 bucket name). Note: may require CDK version <2.14.0 to be fully functional.
 
 ## Deploying a Sample App
 
@@ -65,6 +65,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 2.14.0: Add switches in patches to accommodate new esbuild packaging mechanism in CDK v2.14.0+
 * 1.65.7: Add switch that checks for asset existence before symlinking assets; fix parsing fetched template body for JSON/YAML formats; add missing dependency to "diff" package
 * 1.65.6: Create symlinks to Lambda assets to enable persistent code mounting of Lambdas on "cdklocal synth"
 * 1.65.5: Add support for `LAMBDA_MOUNT_CODE` config to enable local Lambda code mounting

@@ -6,29 +6,6 @@ const path = require('path');
 const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
-const provider = require('aws-cdk/lib/api/aws-auth/sdk-provider');
-const { CdkToolkit } = require('aws-cdk/lib/cdk-toolkit');
-const { SDK } = require('aws-cdk/lib/api/aws-auth/sdk');
-const { ToolkitInfo }  = require('aws-cdk/lib/api');
-const { deserializeStructure } = require('aws-cdk/lib/serialize');
-const deployStackMod = require('aws-cdk/lib/api/deploy-stack');
-const {
-  BUCKET_NAME_OUTPUT, BUCKET_DOMAIN_NAME_OUTPUT
-} = require("aws-cdk/lib/api/bootstrap/bootstrap-props");
-
-// small import util function
-
-const modulePrefix = 'aws-cdk/node_modules';
-const importLib = function(libPath) {
-  try {
-    return require(path.join(modulePrefix, libPath));
-  } catch (e) {
-    return require(path.join(libPath));
-  }
-}
-
-// import CDK assets
-const { FileAssetHandler } = importLib('cdk-assets/lib/private/handlers/files');
 
 // config constants
 
@@ -56,17 +33,6 @@ const useLocal = (options) => {
 };
 
 const md5 = s => crypto.createHash('md5').update(s).digest('hex');
-
-const setOptions = (options, setHttpOptions) => {
-  if (!useLocal(options)) return;
-  if (setHttpOptions) {
-    options = options.httpOptions = options.httpOptions || {};
-  }
-  options.endpoint = getLocalEndpoint();
-  options.s3ForcePathStyle = true;
-  options.accessKeyId = 'test';
-  options.secretAccessKey = 'test';
-};
 
 const getMethods = (obj) => {
   let properties = new Set();
@@ -109,178 +75,248 @@ const fetchURLAsync = (url) => {
   });
 };
 
-//---------
-// PATCHES
-//---------
+// small import util function
 
-const origConstr = provider.SdkProvider.withAwsCliCompatibleDefaults;
-provider.SdkProvider.withAwsCliCompatibleDefaults = async (options = {}) => {
-  setOptions(options, true);
-  return origConstr(options);
+const modulePrefix = 'aws-cdk/node_modules';
+const importLib = function(libPath) {
+  try {
+    return require(path.join(modulePrefix, libPath));
+  } catch (e) {
+    return require(path.join(libPath));
+  }
+}
+
+const setSdkOptions = (options, setHttpOptions) => {
+  if (!useLocal(options)) return;
+  if (setHttpOptions) {
+    options = options.httpOptions = options.httpOptions || {};
+  }
+  options.endpoint = getLocalEndpoint();
+  options.s3ForcePathStyle = true;
+  options.accessKeyId = 'test';
+  options.secretAccessKey = 'test';
 };
 
-provider.SdkProvider.prototype.defaultCredentials = () => {
-  return {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
+const patchProviderCredentials = (provider) => {
+  const origConstr = provider.SdkProvider.withAwsCliCompatibleDefaults;
+  provider.SdkProvider.withAwsCliCompatibleDefaults = async (options = {}) => {
+    setSdkOptions(options, true);
+    const result = await origConstr(options);
+    result.sdkOptions = result.sdkOptions || {};
+    setSdkOptions(result.sdkOptions);
+    return result;
+  };
+
+  provider.SdkProvider.prototype.defaultCredentials = () => {
+    return {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'test'
+    };
   };
 };
 
-const currentAccount = SDK.prototype.currentAccount;
-SDK.prototype.currentAccount = async function () {
-  const config = this.config;
-  setOptions(config);
-  return currentAccount.bind(this)();
-};
-
-const forceCredentialRetrieval = SDK.prototype.forceCredentialRetrieval;
-SDK.prototype.forceCredentialRetrieval = async function () {
-  if (!this._credentials.getPromise) {
-    this._credentials.getPromise = () => this._credentials;
-  }
-  return forceCredentialRetrieval.bind(this)();
-};
-
-getMethods(CdkToolkit.prototype).forEach(meth => {
-  const original = CdkToolkit.prototype[meth];
-  CdkToolkit.prototype[meth] = function() {
-    setOptions(this.props.sdkProvider.sdkOptions);
-    return original.bind(this).apply(this, arguments);
-  }
-});
-
-function setBucketUrl(object) {
-  Object.defineProperty(object, 'bucketUrl', {
-    get() {
-      const bucket = this.requireOutput(BUCKET_NAME_OUTPUT);
-      const domain = this.requireOutput(BUCKET_DOMAIN_NAME_OUTPUT) || getLocalHost();
-      return `https://${domain.replace(`${bucket}.`, '')}:${port}/${bucket}`
+const patchCdkToolkit = (CdkToolkit) => {
+  getMethods(CdkToolkit.ToolkitInfo.prototype).forEach(meth => {
+    const original = CdkToolkit.prototype[meth];
+    CdkToolkit.prototype[meth] = function() {
+      setSdkOptions(this.props.sdkProvider.sdkOptions);
+      return original.bind(this).apply(this, arguments);
     }
   });
-}
+};
 
-// for compatibility with with older versions of CDK
-setBucketUrl(ToolkitInfo.prototype);
+const patchCurrentAccount = (SDK) => {
+  const currentAccount = SDK.prototype.currentAccount;
+  SDK.prototype.currentAccount = async function () {
+    const config = this.config;
+    setSdkOptions(config);
+    return currentAccount.bind(this)();
+  };
 
-const cdkLookupFn = ToolkitInfo.lookup
-ToolkitInfo.lookup = async function(...args) {
-  const toolkitInfoObject = await cdkLookupFn(...args);
-  setBucketUrl(toolkitInfoObject);
-  return toolkitInfoObject;
-}
-
-const fromStackFn = ToolkitInfo.fromStack
-ToolkitInfo.fromStack = function(...args) {
-  const toolkitInfoObject = fromStackFn(...args);
-  setBucketUrl(toolkitInfoObject);
-  return toolkitInfoObject;
-}
-
-// modify asset paths to enable local Lambda code mounting
-
-const lookupLambdaForAsset = (template, paramName) => {
-  const result = Object.keys(template.Resources)
-    .map((k) => template.Resources[k])
-    .filter((r) => r.Type === 'AWS::Lambda::Function')
-    .filter((r) => JSON.stringify(r.Properties.Code.S3Key).includes(paramName));
-  const props = result[0].Properties;
-  const funcName = props.FunctionName;
-  if (funcName) return funcName;
-  const attributes = ['Handler', 'Runtime', 'Description', 'Timeout', 'MemorySize', 'Environment'];
-  const valueToHash = attributes.map((a) => props[a])
-    .map((v) => !v ? '' : typeof v === 'object' ? JSON.stringify(diff.canonicalize(v)) : v)
-    .join('|');
-  return md5(valueToHash);
-}
-
-const symlinkLambdaAssets = function(template, parameters) {
-  const params = parameters || template.Parameters || {};
-  Object.keys(params).forEach((key) => {
-    const item = params[key];
-    const paramKey = item.ParameterKey || key;
-    // TODO: create a more resilient lookup mechanism (not based on 'S3Bucket' param key) below!
-    if (item.ParameterKey && item.ParameterKey.includes('S3Bucket')) {
-      item.ParameterValue = '__local__';
+  const forceCredentialRetrieval = SDK.prototype.forceCredentialRetrieval;
+  SDK.prototype.forceCredentialRetrieval = async function () {
+    if (!this._credentials.getPromise) {
+      this._credentials.getPromise = () => this._credentials;
     }
-    if (!paramKey.includes('S3VersionKey')) {
-      return;
+    return forceCredentialRetrieval.bind(this)();
+  };
+}
+
+const patchToolkitInfo = (ToolkitInfo) => {
+
+  function setBucketUrl(object) {
+    Object.defineProperty(object, 'bucketUrl', {
+      get() {
+        const bucket = this.requireOutput(BUCKET_NAME_OUTPUT);
+        const domain = this.requireOutput(BUCKET_DOMAIN_NAME_OUTPUT) || getLocalHost();
+        return `https://${domain.replace(`${bucket}.`, '')}:${port}/${bucket}`
+      }
+    });
+  }
+
+  // for compatibility with with older versions of CDK
+  setBucketUrl(ToolkitInfo.prototype);
+
+  const cdkLookupFn = ToolkitInfo.lookup
+  ToolkitInfo.lookup = async function(...args) {
+    const toolkitInfoObject = await cdkLookupFn(...args);
+    setBucketUrl(toolkitInfoObject);
+    return toolkitInfoObject;
+  }
+
+  const fromStackFn = ToolkitInfo.fromStack
+  ToolkitInfo.fromStack = function(...args) {
+    const toolkitInfoObject = fromStackFn(...args);
+    setBucketUrl(toolkitInfoObject);
+    return toolkitInfoObject;
+  }
+};
+
+const patchLambdaMounting = () => {
+  const { deserializeStructure } = require('aws-cdk/lib/serialize');
+  const deployStackMod = require('aws-cdk/lib/api/deploy-stack');
+  const {
+    BUCKET_NAME_OUTPUT, BUCKET_DOMAIN_NAME_OUTPUT
+  } = require("aws-cdk/lib/api/bootstrap/bootstrap-props");
+
+  // modify asset paths to enable local Lambda code mounting
+
+  const lookupLambdaForAsset = (template, paramName) => {
+    const result = Object.keys(template.Resources)
+      .map((k) => template.Resources[k])
+      .filter((r) => r.Type === 'AWS::Lambda::Function')
+      .filter((r) => JSON.stringify(r.Properties.Code.S3Key).includes(paramName));
+    const props = result[0].Properties;
+    const funcName = props.FunctionName;
+    if (funcName) return funcName;
+    const attributes = ['Handler', 'Runtime', 'Description', 'Timeout', 'MemorySize', 'Environment'];
+    const valueToHash = attributes.map((a) => props[a])
+      .map((v) => !v ? '' : typeof v === 'object' ? JSON.stringify(diff.canonicalize(v)) : v)
+      .join('|');
+    return md5(valueToHash);
+  }
+
+  const symlinkLambdaAssets = function(template, parameters) {
+    const params = parameters || template.Parameters || {};
+    Object.keys(params).forEach((key) => {
+      const item = params[key];
+      const paramKey = item.ParameterKey || key;
+      // TODO: create a more resilient lookup mechanism (not based on 'S3Bucket' param key) below!
+      if (item.ParameterKey && item.ParameterKey.includes('S3Bucket')) {
+        item.ParameterValue = '__local__';
+      }
+      if (!paramKey.includes('S3VersionKey')) {
+        return;
+      }
+      let assetId = '';
+      if (item.ParameterValue) {
+        const parts = item.ParameterValue.split('||');
+        if (item.ParameterValue.endsWith('.zip') && parts.length > 1) {
+          assetId = parts[1].replace('.zip', '');
+        }
+      }
+      if (!assetId) {
+        assetId = paramKey.replace('AssetParameters', '').split('S3VersionKey')[0];
+      }
+      const funcName = lookupLambdaForAsset(template, paramKey);
+      const lambdaAsset = `cdk.out/asset.lambda.${funcName}`;
+      if (fs.existsSync(lambdaAsset)) {
+        fs.unlinkSync(lambdaAsset);  // delete any existing symlinks
+      }
+      if (fs.existsSync(`cdk.out/asset.${assetId}`)) {
+        fs.symlinkSync(`asset.${assetId}`, lambdaAsset);
+      }
+
+      item.ParameterValue = `${process.cwd()}/||${lambdaAsset}`;
+    });
+  };
+
+  // symlink local Lambda assets if "cdklocal deploy" is called with LAMBDA_MOUNT_CODE=1
+
+  const deployStackOrig = deployStackMod.deployStack;
+  deployStackMod.deployStack = async function deployStack(options) {
+    options.sdk.cloudFormationOrig = options.sdk.cloudFormationOrig || options.sdk.cloudFormation;
+    const state = {};
+    options.sdk.cloudFormation = function() {
+      return state.instance;
     }
-    let assetId = '';
-    if (item.ParameterValue) {
-      const parts = item.ParameterValue.split('||');
-      if (item.ParameterValue.endsWith('.zip') && parts.length > 1) {
-        assetId = parts[1].replace('.zip', '');
+    const cfn = state.instance = options.sdk.cloudFormationOrig();
+    cfn.createChangeSetOrig = cfn.createChangeSetOrig || cfn.createChangeSet;
+    const createChangeSetAsync = async function(params) {
+      if (LAMBDA_MOUNT_CODE) {
+        const template = deserializeStructure(await getTemplateBody(params));
+        symlinkLambdaAssets(template, params.Parameters);
+      }
+      return cfn.createChangeSetOrig(params).promise();
+    };
+    cfn.createChangeSet = (params) => ({promise: () => createChangeSetAsync(params)});
+    const result = deployStackOrig(options);
+    return result;
+  }
+
+  // skip uploading Lambda assets if LAMBDA_MOUNT_CODE=1
+
+  const { FileAssetHandler } = importLib('cdk-assets/lib/private/handlers/files');
+
+  const handlerPublish = FileAssetHandler.prototype.publish;
+  FileAssetHandler.prototype.publish = async function() {
+    if (LAMBDA_MOUNT_CODE && this.asset.destination && this.asset.source) {
+      if (this.asset.source.packaging === 'zip') {
+        // skip uploading this asset - should get mounted via `__file__` into the Lambda container later on
+        return;
       }
     }
-    if (!assetId) {
-      assetId = paramKey.replace('AssetParameters', '').split('S3VersionKey')[0];
-    }
-    const funcName = lookupLambdaForAsset(template, paramKey);
-    const lambdaAsset = `cdk.out/asset.lambda.${funcName}`;
-    if (fs.existsSync(lambdaAsset)) {
-      fs.unlinkSync(lambdaAsset);  // delete any existing symlinks
-    }
-    if (fs.existsSync(`cdk.out/asset.${assetId}`)) {
-      fs.symlinkSync(`asset.${assetId}`, lambdaAsset);
-    }
+    return handlerPublish.bind(this)();
+  };
 
-    item.ParameterValue = `${process.cwd()}/||${lambdaAsset}`;
-  });
-};
+  // symlink local Lambda assets if "cdklocal synth" is called with LAMBDA_MOUNT_CODE=1
 
-// symlink local Lambda assets if "cdklocal deploy" is called with LAMBDA_MOUNT_CODE=1
-
-const deployStackOrig = deployStackMod.deployStack;
-deployStackMod.deployStack = async function deployStack(options) {
-  options.sdk.cloudFormationOrig = options.sdk.cloudFormationOrig || options.sdk.cloudFormation;
-  const state = {};
-  options.sdk.cloudFormation = function() {
-    return state.instance;
-  }
-  const cfn = state.instance = options.sdk.cloudFormationOrig();
-  cfn.createChangeSetOrig = cfn.createChangeSetOrig || cfn.createChangeSet;
-  const createChangeSetAsync = async function(params) {
+  const assemblyOrig = CdkToolkit.prototype.assembly;
+  CdkToolkit.prototype.assembly = async function() {
+    const result = await assemblyOrig.bind(this)();
     if (LAMBDA_MOUNT_CODE) {
-      const template = deserializeStructure(await getTemplateBody(params));
-      symlinkLambdaAssets(template, params.Parameters);
+      result.assembly.artifacts.forEach(
+        (art) => {
+          symlinkLambdaAssets(art._template || {});
+        }
+      );
     }
-    return cfn.createChangeSetOrig(params).promise();
-  };
-  cfn.createChangeSet = (params) => ({promise: () => createChangeSetAsync(params)});
-  const result = deployStackOrig(options);
-  return result;
-}
-
-// skip uploading Lambda assets if LAMBDA_MOUNT_CODE=1
-
-const handlerPublish = FileAssetHandler.prototype.publish;
-FileAssetHandler.prototype.publish = async function() {
-  if (LAMBDA_MOUNT_CODE && this.asset.destination && this.asset.source) {
-    if (this.asset.source.packaging === 'zip') {
-      // skip uploading this asset - should get mounted via `__file__` into the Lambda container later on
-      return;
-    }
+    return result;
   }
-  return handlerPublish.bind(this)();
 };
 
-// symlink local Lambda assets if "cdklocal synth" is called with LAMBDA_MOUNT_CODE=1
+const applyPatches = (provider, CdkToolkit, SDK, ToolkitInfo, patchAssets=true) => {
+  patchProviderCredentials(provider);
+  patchCdkToolkit(CdkToolkit);
+  patchCurrentAccount(SDK);
+  patchToolkitInfo(ToolkitInfo);
+  // patch asset handling for Lambda code mounting - TODO currently failing for CDK v2.14.0+
+  if (patchAssets) patchLambdaMounting();
+};
 
-const assemblyOrig = CdkToolkit.prototype.assembly;
-CdkToolkit.prototype.assembly = async function() {
-  const result = await assemblyOrig.bind(this)();
-  if (LAMBDA_MOUNT_CODE) {
-    result.assembly.artifacts.forEach(
-      (art) => {
-        symlinkLambdaAssets(art._template || {});
-      }
-    );
-  }
-  return result;
+const patchPre_2_14 = () => {
+  const provider = require('aws-cdk/lib/api/aws-auth');
+  const { CdkToolkit } = require('aws-cdk/lib/cdk-toolkit');
+  const { SDK } = require('aws-cdk/lib/api/aws-auth/sdk');
+  const { ToolkitInfo }  = require('aws-cdk/lib/api');
+
+  applyPatches(provider, CdkToolkit, SDK, ToolkitInfo);
 }
 
-//----------
-// MAIN CLI
-//----------
+const patchPost_2_14 = () => {
+  const lib = require('aws-cdk/lib');
 
+  applyPatches(lib, lib, lib.SDK, lib.ToolkitInfo, false);
+}
+
+try {
+  // load for CDK version 2.14.0 and above
+  // (v2.14.0+ uses a self-contained bundle, see https://github.com/aws/aws-cdk/pull/18667)
+  patchPost_2_14();
+} catch (e) {
+  // fall back to loading for CDK version 2.13.0 and below
+  patchPre_2_14();
+}
+
+// load main CLI script
 require('aws-cdk/bin/cdk');

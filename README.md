@@ -1,3 +1,5 @@
+[![Integration Tests](https://github.com/localstack/aws-cdk-local/actions/workflows/build.yml/badge.svg)](https://github.com/localstack/aws-cdk-local/actions/workflows/build.yml)
+
 # AWS Cloud Development Kit (CDK) for LocalStack
 
 This project provides a thin wrapper script `cdklocal` for using the [AWS CDK](https://github.com/aws/aws-cdk) library against local APIs provided by [LocalStack](https://github.com/localstack/localstack).
@@ -65,6 +67,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 2.15.0: Fix issue with undefined BUCKET_NAME_OUTPUT variable; add CI build and eslint config
 * 2.14.0: Add switches in patches to accommodate new esbuild packaging mechanism in CDK v2.14.0+
 * 1.65.7: Add switch that checks for asset existence before symlinking assets; fix parsing fetched template body for JSON/YAML formats; add missing dependency to "diff" package
 * 1.65.6: Create symlinks to Lambda assets to enable persistent code mounting of Lambdas on "cdklocal synth"

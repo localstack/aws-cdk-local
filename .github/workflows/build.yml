@@ -1,0 +1,22 @@
+name: Integration Tests
+
+on:
+  push:
+    paths-ignore:
+      - 'README.md'
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build and Lint
+        run: |
+          npm install
+          npm run lint

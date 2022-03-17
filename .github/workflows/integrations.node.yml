@@ -1,0 +1,98 @@
+name: Regression Tests (NodeJS)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      upstream-version:
+        description: Upstream aws-cdk version to use in tests
+        required: false
+env:
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+
+jobs:
+  integration-nodejs:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        include:
+          - { language: javascript, node-version: '16.x', region: us-east-1}
+          - { language: typescript, node-version: '16.x', region: eu-west-2}
+          - { language: typescript, node-version: '16.x', region: us-east-1}
+          - { language: typescript, node-version: '14.x', region: us-east-1}
+          - { language: typescript, node-version: '12.x', region: us-east-1}
+
+    env:
+      AWS_REGION: ${{ matrix.region }}
+      AWS_DEFAULT_REGION: ${{ matrix.region }}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: repo
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies for aws-cdk-local
+        working-directory: repo
+        run: |
+          npm install
+          npm install aws-cdk
+          echo "$(pwd)/bin" >> $GITHUB_PATH
+
+      - name: Install specific aws-cdk version
+        working-directory: repo
+        if: inputs.upstream-version
+        run: npm install aws-cdk@${{ inputs.upstream-version }}
+
+      - name: Verify specific aws-cdk version is used by cdklocal
+        if: inputs.upstream-version
+        run: |
+          [[ $(cdklocal --version) =~ ^${{ inputs.upstream-version }}.* ]] || exit 1
+
+      - name: Install localstack CLI
+        run: pip install localstack
+
+      - name: Create temporary directory for test
+        run: mkdir cdk-test
+
+      - name: Initialize new CDK app
+        working-directory: cdk-test
+        run: cdklocal init app --language=${{ matrix.language }}
+
+      - name: Start and wait for localstack (Community)
+        timeout-minutes: 10
+        run: |
+          docker pull localstack/localstack:latest
+          localstack start -d
+          localstack wait -t 30
+
+      - name: Run bootstrap
+        working-directory: cdk-test
+        timeout-minutes: 1
+        run: cdklocal bootstrap
+
+      - name: Deploy
+        working-directory: cdk-test
+        timeout-minutes: 1
+        run: cdklocal deploy --require-approval=never
+
+      - name: Verify successful deployment
+        run: |
+          [ $(aws cloudformation describe-stacks --endpoint-url http://localhost:4566 | jq '[ .Stacks[] | select(.StackStatus == "CREATE_COMPLETE") ] | length') -eq 2 ] || exit 1
+          [ $(aws cloudformation describe-stacks --endpoint-url http://localhost:4566 | jq '[ .Stacks[] | select(.StackStatus == "CREATE_FAILED") ] | length') -eq 0 ] || exit 1

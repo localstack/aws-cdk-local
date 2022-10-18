@@ -94,8 +94,8 @@ const setSdkOptions = (options, setHttpOptions) => {
   }
   options.endpoint = getLocalEndpoint();
   options.s3ForcePathStyle = true;
-  options.accessKeyId = "test";
-  options.secretAccessKey = "test";
+  options.accessKeyId = process.env.AWS_ACCESS_KEY_ID || "test";
+  options.secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY || "test";
 };
 
 const patchProviderCredentials = (provider) => {

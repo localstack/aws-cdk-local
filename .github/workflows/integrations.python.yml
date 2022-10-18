@@ -13,7 +13,6 @@ on:
         description: Upstream aws-cdk version to use in tests
         required: false
 env:
-  AWS_ACCESS_KEY_ID: test
   AWS_SECRET_ACCESS_KEY: test
 
 jobs:
@@ -23,11 +22,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - { language: python, node-version: '16.x', python-version: '3.10', region: us-east-1}
-          - { language: python, node-version: '16.x', python-version: '3.9', region: us-east-1}
-          - { language: python, node-version: '16.x', python-version: '3.8', region: us-east-1}
+          - { language: python, node-version: '16.x', python-version: '3.10', region: us-east-1, access-key-id: '000000000001'}
+          - { language: python, node-version: '16.x', python-version: '3.10', region: us-east-1, access-key-id: 'test'}
+          - { language: python, node-version: '16.x', python-version: '3.9', region: us-east-1, access-key-id: 'test'}
+          - { language: python, node-version: '16.x', python-version: '3.8', region: us-east-1, access-key-id: 'test'}
 
     env:
+      AWS_ACCESS_KEY_ID: ${{ matrix.access-key-id }}
       AWS_REGION: ${{ matrix.region }}
       AWS_DEFAULT_REGION: ${{ matrix.region }}
 

@@ -24,25 +24,32 @@ const getLocalEndpoint = async () => `http://${await getLocalHost()}`;
 
 const port = process.env.EDGE_PORT || DEFAULT_EDGE_PORT;
 
+var resolvedHostname = undefined;
+
 const getLocalHost = async () => {
-  var host = process.env.LOCALSTACK_HOSTNAME || DEFAULT_HOSTNAME;
+  if (resolvedHostname) {
+    // early exit to not resolve again
+    return `${resolvedHostname}:${port}`;
+  }
+
+  var hostname = process.env.LOCALSTACK_HOSTNAME || DEFAULT_HOSTNAME;
   // attempt to connect to the given host/port
   const socket = new net.Socket();
   try {
-    await socket.connect({ host: host, port });
+    await socket.connect({ host: hostname, port });
   } catch (e) {
-    if (host === 'localhost') {
+    if (hostname === "localhost") {
       // fall back to using local IPv4 address - to fix IPv6 issue on MacOS
       // see, https://github.com/localstack/serverless-localstack/issues/125
       // and https://github.com/localstack/aws-cdk-local/issues/78
-      host = "127.0.0.1";
+      hostname = "127.0.0.1";
     }
   } finally {
     socket.destroy();
   }
 
-
-  return `${host}:${port}`;
+  resolvedHostname = hostname;
+  return `${hostname}:${port}`;
 };
 
 const useLocal = () => {
@@ -166,9 +173,9 @@ const patchToolkitInfo = (ToolkitInfo) => {
 
   const setBucketUrl = function setBucketUrl (object) {
     Object.defineProperty(object, "bucketUrl", {
-      get () {
+      async get () {
         const bucket = this.requireOutput(BUCKET_NAME_OUTPUT);
-        const domain = this.requireOutput(BUCKET_DOMAIN_NAME_OUTPUT) || getLocalHost();
+        const domain = this.requireOutput(BUCKET_DOMAIN_NAME_OUTPUT) || await getLocalHost();
         return `https://${domain.replace(`${bucket}.`, "")}:${port}/${bucket}`;
       }
     });

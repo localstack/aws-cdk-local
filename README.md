@@ -67,6 +67,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 2.16.0: Add check to prevent IPv6 connection issue with `localhost` on MacOS
 * 2.15.0: Fix issue with undefined BUCKET_NAME_OUTPUT variable; add CI build and eslint config
 * 2.14.0: Add switches in patches to accommodate new esbuild packaging mechanism in CDK v2.14.0+
 * 1.65.7: Add switch that checks for asset existence before symlinking assets; fix parsing fetched template body for JSON/YAML formats; add missing dependency to "diff" package

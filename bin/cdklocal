@@ -7,6 +7,7 @@ const path = require("path");
 const http = require("http");
 const https = require("https");
 const crypto = require("crypto");
+const net = require('net');
 
 // config constants
 
@@ -19,12 +20,28 @@ const LAMBDA_MOUNT_CODE = ["1", "true"].includes(process.env.LAMBDA_MOUNT_CODE);
 // UTIL FUNCTIONS
 //----------------
 
-const getLocalEndpoint = () => `http://${getLocalHost()}`;
+const getLocalEndpoint = async () => `http://${await getLocalHost()}`;
 
 const port = process.env.EDGE_PORT || DEFAULT_EDGE_PORT;
 
-const getLocalHost = () => {
-  const host = process.env.LOCALSTACK_HOSTNAME || DEFAULT_HOSTNAME;
+const getLocalHost = async () => {
+  var host = process.env.LOCALSTACK_HOSTNAME || DEFAULT_HOSTNAME;
+  // attempt to connect to the given host/port
+  const socket = new net.Socket();
+  try {
+    await socket.connect({ host: host, port });
+  } catch (e) {
+    if (host === 'localhost') {
+      // fall back to using local IPv4 address - to fix IPv6 issue on MacOS
+      // see, https://github.com/localstack/serverless-localstack/issues/125
+      // and https://github.com/localstack/aws-cdk-local/issues/78
+      host = "127.0.0.1";
+    }
+  } finally {
+    socket.destroy();
+  }
+
+
   return `${host}:${port}`;
 };
 
@@ -85,14 +102,14 @@ const importLib = function importLib (libPath) {
   }
 };
 
-const setSdkOptions = (options, setHttpOptions) => {
+const setSdkOptions = async (options, setHttpOptions) => {
   if (!useLocal(options)) {
     return;
   }
   if (setHttpOptions) {
     options = options.httpOptions = options.httpOptions || {};
   }
-  options.endpoint = getLocalEndpoint();
+  options.endpoint = await getLocalEndpoint();
   options.s3ForcePathStyle = true;
   options.accessKeyId = "test";
   options.secretAccessKey = "test";
@@ -101,10 +118,10 @@ const setSdkOptions = (options, setHttpOptions) => {
 const patchProviderCredentials = (provider) => {
   const origConstr = provider.SdkProvider.withAwsCliCompatibleDefaults;
   provider.SdkProvider.withAwsCliCompatibleDefaults = async (options = {}) => {
-    setSdkOptions(options, true);
+    await setSdkOptions(options, true);
     const result = await origConstr(options);
     result.sdkOptions = result.sdkOptions || {};
-    setSdkOptions(result.sdkOptions);
+    await setSdkOptions(result.sdkOptions);
     return result;
   };
 
@@ -118,8 +135,8 @@ const patchCdkToolkit = (CdkToolkit) => {
   const CdkToolkitClass = CdkToolkit.ToolkitInfo || CdkToolkit;
   getMethods(CdkToolkitClass.prototype).forEach((meth) => {
     const original = CdkToolkitClass.prototype[meth];
-    CdkToolkitClass.prototype[meth] = function methFunc (...args) {
-      setSdkOptions(this.props.sdkProvider.sdkOptions);
+    CdkToolkitClass.prototype[meth] = async function methFunc (...args) {
+      await setSdkOptions(this.props.sdkProvider.sdkOptions);
       return original.bind(this).apply(this, args);
     };
   });
@@ -127,9 +144,9 @@ const patchCdkToolkit = (CdkToolkit) => {
 
 const patchCurrentAccount = (SDK) => {
   const currentAccountOrig = SDK.prototype.currentAccount;
-  SDK.prototype.currentAccount = function currentAccount () {
+  SDK.prototype.currentAccount = async function currentAccount () {
     const {config} = this;
-    setSdkOptions(config);
+    await setSdkOptions(config);
     return currentAccountOrig.bind(this)();
   };
 

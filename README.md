@@ -67,6 +67,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 2.17.0: Fix IPv4 fallback check to prevent IPv6 connection issue with `localhost` on macOS
 * 2.16.0: Add check to prevent IPv6 connection issue with `localhost` on MacOS
 * 2.15.0: Fix issue with undefined BUCKET_NAME_OUTPUT variable; add CI build and eslint config
 * 2.14.0: Add switches in patches to accommodate new esbuild packaging mechanism in CDK v2.14.0+

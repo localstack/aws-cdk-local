@@ -9,27 +9,29 @@ const https = require("https");
 const crypto = require("crypto");
 const net = require('net');
 
-// config constants
+// constants and custom config values
+
+const isEnvTrue = (envName) => ["1", "true"].includes(process.env[envName]);
 
 const DEFAULT_EDGE_PORT = 4566;
+const EDGE_PORT = process.env.EDGE_PORT || DEFAULT_EDGE_PORT;
 const DEFAULT_HOSTNAME = "localhost";
-const LAMBDA_MOUNT_CODE = ["1", "true"].includes(process.env.LAMBDA_MOUNT_CODE);
+const LAMBDA_MOUNT_CODE = isEnvTrue("LAMBDA_MOUNT_CODE");
+const PROTOCOL = isEnvTrue("USE_SSL") ? "https" : "http";
 
 
 //----------------
 // UTIL FUNCTIONS
 //----------------
 
-const getLocalEndpoint = async () => `http://${await getLocalHost()}`;
-
-const port = process.env.EDGE_PORT || DEFAULT_EDGE_PORT;
+const getLocalEndpoint = async () => process.env.AWS_ENDPOINT_URL || `${PROTOCOL}://${await getLocalHost()}`;
 
 var resolvedHostname = undefined;
 
 const getLocalHost = async () => {
   if (resolvedHostname) {
     // early exit to not resolve again
-    return `${resolvedHostname}:${port}`;
+    return `${resolvedHostname}:${EDGE_PORT}`;
   }
 
   var hostname = process.env.LOCALSTACK_HOSTNAME || DEFAULT_HOSTNAME;
@@ -40,7 +42,7 @@ const getLocalHost = async () => {
   // Issue: https://github.com/localstack/aws-cdk-local/issues/78
   if (hostname === "localhost") {
     try {
-      const options = { host: hostname, port: port };
+      const options = { host: hostname, port: EDGE_PORT };
       await checkTCPConnection(options);
     } catch (e) {
       hostname = "127.0.0.1";
@@ -48,7 +50,7 @@ const getLocalHost = async () => {
   }
 
   resolvedHostname = hostname;
-  return `${hostname}:${port}`;
+  return `${hostname}:${EDGE_PORT}`;
 };
 
 /**
@@ -204,7 +206,7 @@ const patchToolkitInfo = (ToolkitInfo) => {
       async get () {
         const bucket = this.requireOutput(BUCKET_NAME_OUTPUT);
         const domain = this.requireOutput(BUCKET_DOMAIN_NAME_OUTPUT) || await getLocalHost();
-        return `https://${domain.replace(`${bucket}.`, "")}:${port}/${bucket}`;
+        return `https://${domain.replace(`${bucket}.`, "")}:${EDGE_PORT}/${bucket}`;
       }
     });
   };
@@ -257,7 +259,8 @@ const patchLambdaMounting = (CdkToolkit) => {
       const paramKey = item.ParameterKey || key;
       // TODO: create a more resilient lookup mechanism (not based on "S3Bucket" param key) below!
       if (item.ParameterKey && item.ParameterKey.includes("S3Bucket")) {
-        item.ParameterValue = "__local__";
+        // TODO: change the default BUCKET_MARKER_LOCAL to 'hot-reload'
+        item.ParameterValue = process.env.BUCKET_MARKER_LOCAL || '__local__'; // for now, the default is still __local__
       }
       if (!paramKey.includes("S3VersionKey")) {
         return;

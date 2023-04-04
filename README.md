@@ -25,9 +25,12 @@ $ cdklocal --version
 
 The following environment variables can be configured:
 
-* `EDGE_PORT`: Port under which LocalStack edge service is accessible (default: `4566`)
-* `LOCALSTACK_HOSTNAME`: Target host under which LocalStack edge service is accessible (default: `localhost`)
+* `AWS_ENDPOINT_URL`: The endpoint URL to connect to (combination of `USE_SSL`/`LOCALSTACK_HOSTNAME`/`EDGE_PORT` below)
+* `EDGE_PORT` (deprecated): Port under which LocalStack edge service is accessible (default: `4566`)
+* `LOCALSTACK_HOSTNAME` (deprecated): Target host under which LocalStack edge service is accessible (default: `localhost`)
+* `USE_SSL` (deprecated): Whether to use SSL to connect to the LocalStack endpoint, i.e., connect via HTTPS.
 * `LAMBDA_MOUNT_CODE`: Whether to use local Lambda code mounting (via setting `__local__` S3 bucket name). Note: may require CDK version <2.14.0 to be fully functional.
+* `BUCKET_MARKER_LOCAL`: Magic S3 bucket name for Lambda mount and [hot reloading](https://docs.localstack.cloud/user-guide/tools/lambda-tools/hot-reloading) (default: `__local__`, will default to `hot-reload` in a future release)
 
 ## Deploying a Sample App
 
@@ -67,6 +70,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 2.18.0: Add support for AWS_ENDPOINT_URL, USE_SSL, and BUCKET_MARKER_LOCAL configurations
 * 2.17.0: Fix IPv4 fallback check to prevent IPv6 connection issue with `localhost` on macOS
 * 2.16.0: Add check to prevent IPv6 connection issue with `localhost` on MacOS
 * 2.15.0: Fix issue with undefined BUCKET_NAME_OUTPUT variable; add CI build and eslint config

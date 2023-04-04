@@ -259,7 +259,8 @@ const patchLambdaMounting = (CdkToolkit) => {
       const paramKey = item.ParameterKey || key;
       // TODO: create a more resilient lookup mechanism (not based on "S3Bucket" param key) below!
       if (item.ParameterKey && item.ParameterKey.includes("S3Bucket")) {
-        item.ParameterValue = "__local__";
+        // TODO: change the default BUCKET_MARKER_LOCAL to 'hot-reload'
+        item.ParameterValue = process.env.BUCKET_MARKER_LOCAL || '__local__'; // for now, the default is still __local__
       }
       if (!paramKey.includes("S3VersionKey")) {
         return;

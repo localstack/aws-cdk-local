@@ -363,16 +363,36 @@ const applyPatches = (provider, CdkToolkit, SDK, ToolkitInfo, patchAssets = true
 };
 
 const patchPre_2_14 = () => {
-  const provider = require("aws-cdk/lib/api/aws-auth");
+  var provider = null;
+  try {
+    provider = require("aws-cdk/lib/api/aws-auth");
+  } catch(e) {
+    if (e.code == "MODULE_NOT_FOUND") {
+      console.log(e);
+      console.log("`aws-cdk` module NOT found! Have you tried to add it to your `NODE_PATH`?");
+      process.exit(1);
+    }
+  }
+
   const {CdkToolkit} = require("aws-cdk/lib/cdk-toolkit");
   const {SDK} = require("aws-cdk/lib/api/aws-auth/sdk");
   const {ToolkitInfo} = require("aws-cdk/lib/api");
+
 
   applyPatches(provider, CdkToolkit, SDK, ToolkitInfo);
 };
 
 const patchPost_2_14 = () => {
-  const lib = require("aws-cdk/lib");
+  var lib = null;
+  try {
+    lib = require("aws-cdk/lib");
+  } catch(e) {
+    if (e.code == "MODULE_NOT_FOUND") {
+      console.log(e);
+      console.log("`aws-cdk` module NOT found! Have you tried to add it to your `NODE_PATH`?");
+      process.exit(1);
+    }
+  }
 
   applyPatches(lib, lib, lib.SDK, lib.ToolkitInfo, false);
 };

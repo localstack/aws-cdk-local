@@ -9,7 +9,7 @@ This project provides a thin wrapper script `cdklocal` for using the [AWS CDK](h
 ## Quick Installation
 
 The `cdklocal` command line is published as an [npm library](https://www.npmjs.com/package/aws-cdk-local):
-```
+```bash
 $ npm install -g aws-cdk-local aws-cdk
 ...
 $ cdklocal --version
@@ -20,6 +20,13 @@ $ cdklocal --version
 (to decouple the two libraries, and allow using arbitrary versions of `aws-cdk` under the covers).
 
 (Note: Depending on your local setup, you may or may not have to use the global `npm` installation flag `-g` above.)
+
+### Mac OS specific `MODULE_NOT_FOUND` issue
+On Mac OS, brew could be used to install AWS CDK, which will result in a `MODULE_NOT_FOUND` error from `cdklocal`.  
+To resolve this, set the `NODE_PATH` variable pointing to your AWS CDK's `node_module` folder to expand the lookup path for modules.
+```bash
+$ export NODE_PATH=$NODE_PATH:/opt/homebrew/Cellar/aws-cdk/<CDK_VERSION>/libexec/lib/node_modules
+```
 
 ## Configurations
 
@@ -35,19 +42,19 @@ The following environment variables can be configured:
 ## Deploying a Sample App
 
 The CDK command line ships with a sample app generator to run a quick test for getting started:
-```
+```bash
 $ mkdir /tmp/test; cd /tmp/test
 $ cdklocal init sample-app --language=javascript
 ...
 ```
 
 Make sure that LocalStack is installed and started up with the required services:
-```
+```bash
 $ SERVICES=serverless,sqs,sns localstack start
 ```
 
 Then deploy the sample app against the local APIs via the `cdklocal` command line:
-```
+```bash
 $ cdklocal deploy
 ...
 Do you wish to deploy these changes (y/n)? y
@@ -57,7 +64,7 @@ arn:aws:cloudformation:us-east-1:000000000000:stack/TestStack/e3debc0a-311e-4968
 ```
 
 Once the deployment is done, you can inspect the created resources via the [`awslocal`](https://github.com/localstack/awscli-local) command line:
-```
+```bash
 $ awslocal sns list-topics
 {
     "Topics": [
@@ -70,6 +77,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 2.18.1: Throw better exception if `aws-cdk` not found
 * 2.18.0: Add support for AWS_ENDPOINT_URL, USE_SSL, and BUCKET_MARKER_LOCAL configurations
 * 2.17.0: Fix IPv4 fallback check to prevent IPv6 connection issue with `localhost` on macOS
 * 2.16.0: Add check to prevent IPv6 connection issue with `localhost` on MacOS

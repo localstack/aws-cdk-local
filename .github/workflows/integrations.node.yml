@@ -23,10 +23,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - { language: javascript, node-version: '16.x', region: us-east-1}
-          - { language: typescript, node-version: '16.x', region: eu-west-2}
-          - { language: typescript, node-version: '16.x', region: us-east-1}
-          - { language: typescript, node-version: '14.x', region: us-east-1}
+          - { language: javascript, node-version: '18.x', region: us-east-1}
+          - { language: typescript, node-version: '20.x', region: eu-west-2}
+          - { language: typescript, node-version: '21.x', region: us-east-1}
+          - { language: typescript, node-version: '22.x', region: us-east-1}
 
     env:
       AWS_REGION: ${{ matrix.region }}

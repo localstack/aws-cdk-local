@@ -22,7 +22,7 @@ $ cdklocal --version
 (Note: Depending on your local setup, you may or may not have to use the global `npm` installation flag `-g` above.)
 
 ### Mac OS specific `MODULE_NOT_FOUND` issue
-On Mac OS, brew could be used to install AWS CDK, which will result in a `MODULE_NOT_FOUND` error from `cdklocal`.  
+On Mac OS, brew can be used to install AWS CDK, which might result in a `MODULE_NOT_FOUND` error from `cdklocal`.  
 To resolve this, set the `NODE_PATH` variable pointing to your AWS CDK's `node_module` folder to expand the lookup path for modules.
 ```bash
 $ export NODE_PATH=$NODE_PATH:/opt/homebrew/Cellar/aws-cdk/<CDK_VERSION>/libexec/lib/node_modules

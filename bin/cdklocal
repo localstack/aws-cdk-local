@@ -369,8 +369,8 @@ const patchPre_2_14 = () => {
   } catch(e) {
     if (e.code == "MODULE_NOT_FOUND") {
       console.log(e);
-      console.log("`aws-cdk` module NOT found! Have you tried to add it to your `NODE_PATH`?");
-      process.exit(1);
+      console.error("`aws-cdk` module NOT found! Have you tried adding it to your `NODE_PATH`?");
+      throw e;
     }
   }
 

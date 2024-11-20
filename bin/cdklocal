@@ -139,6 +139,7 @@ const importLib = function importLib (libPath) {
   }
 };
 
+// this isn't doing anything for current versions (e.g. 2.167.1)
 const setSdkOptions = async (options, setHttpOptions) => {
   if (!useLocal(options)) {
     return;
@@ -155,10 +156,13 @@ const setSdkOptions = async (options, setHttpOptions) => {
 const patchProviderCredentials = (provider) => {
   const origConstr = provider.SdkProvider.withAwsCliCompatibleDefaults;
   provider.SdkProvider.withAwsCliCompatibleDefaults = async (options = {}) => {
-    await setSdkOptions(options, true);
+    const localEndpoint = await getLocalEndpoint();
+    await setSdkOptions(options, true); // legacy
     const result = await origConstr(options);
-    result.sdkOptions = result.sdkOptions || {};
-    await setSdkOptions(result.sdkOptions);
+    result.sdkOptions = result.sdkOptions || {}; // legacy
+    await setSdkOptions(result.sdkOptions); // legacy
+    result.requestHandler.endpoint = localEndpoint;
+    result.requestHandler.forcePathStyle = true;
     return result;
   };
 
@@ -351,7 +355,51 @@ const isEsbuildBundle = () => {
   }
 };
 
+
+const patchSdk = (SDK, localEndpoint) => {
+  getMethods(SDK.prototype).forEach((methodName) => {
+    if (typeof SDK.prototype[methodName] === 'function') {
+      const original = SDK.prototype[methodName];
+      SDK.prototype[methodName] = function methFunc (...args) {
+        this.config = {
+          ...this.config,
+          endpoint: localEndpoint,
+          forcePathStyle: true,
+        };
+        return original.apply(this, args);
+      };
+    }
+  });
+};
+
+let sdkOverwritten = false;
+const patchSdkProvider = (provider, SDK) => {
+  getMethods(provider.SdkProvider.prototype).forEach((methodName) => {
+        if (typeof provider.SdkProvider.prototype[methodName] === 'function') {
+          const original = provider.SdkProvider.prototype[methodName];
+          provider.SdkProvider.prototype[methodName] = async function methFunc(...args) {
+            const localEndpoint = await getLocalEndpoint();
+
+            if (!sdkOverwritten) {
+              // the goal is to support `SdkProvider.withAssumedRole`
+              // since it instantiates a different client (i.e. not from the SDK class)
+              this.requestHandler.endpoint = localEndpoint;
+              this.requestHandler.forcePathStyle = true;
+              // patch SDK class methods (mostly clients) to make sure the config that is created in the constructor
+              // is updated with the correct configuration
+              patchSdk(SDK, localEndpoint);
+              sdkOverwritten = true;
+            }
+            return await original.apply(this, args);
+          };
+        }
+      }
+  );
+};
+
 const applyPatches = (provider, CdkToolkit, SDK, ToolkitInfo, patchAssets = true) => {
+  patchSdkProvider(provider, SDK);
+  // TODO: a lot of the patches are not really needed for newer versions
   patchProviderCredentials(provider);
   patchCdkToolkit(CdkToolkit);
   patchCurrentAccount(SDK);

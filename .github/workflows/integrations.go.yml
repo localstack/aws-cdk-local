@@ -7,6 +7,8 @@ on:
   pull_request:
     branches:
       - main
+  schedule:
+    - cron: '0 5 * * *'  # once daily at 5AM
   workflow_dispatch:
     inputs:
       upstream-version:

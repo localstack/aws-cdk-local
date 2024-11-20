@@ -1,12 +1,13 @@
 {
   "name": "aws-cdk-local",
   "description": "CDK Toolkit for use with LocalStack",
-  "version": "2.18.1",
+  "version": "2.19.0",
   "bin": {
     "cdklocal": "bin/cdklocal"
   },
   "scripts": {
-    "lint": "eslint bin/cdklocal"
+    "lint": "eslint bin/cdklocal",
+    "format": "eslint --fix bin/cdklocal"
   },
   "author": {
     "name": "LocalStack",

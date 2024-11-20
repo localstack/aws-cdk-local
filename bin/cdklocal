@@ -42,7 +42,7 @@ const getLocalHost = async () => {
   // Issue: https://github.com/localstack/aws-cdk-local/issues/78
   if (hostname === "localhost") {
     try {
-      const options = { host: hostname, port: EDGE_PORT };
+      const options = {host: hostname, port: EDGE_PORT};
       await checkTCPConnection(options);
     } catch (e) {
       hostname = "127.0.0.1";
@@ -131,7 +131,7 @@ const getTemplateBody = (params) => {
 // small import util function
 
 const modulePrefix = "aws-cdk/node_modules";
-const importLib = function importLib (libPath) {
+const importLib = function importLib(libPath) {
   try {
     return require(path.join(modulePrefix, libPath));
   } catch (exc) {
@@ -139,6 +139,7 @@ const importLib = function importLib (libPath) {
   }
 };
 
+// this isn't doing anything for current versions (e.g. 2.167.1)
 const setSdkOptions = async (options, setHttpOptions) => {
   if (!useLocal(options)) {
     return;
@@ -155,10 +156,13 @@ const setSdkOptions = async (options, setHttpOptions) => {
 const patchProviderCredentials = (provider) => {
   const origConstr = provider.SdkProvider.withAwsCliCompatibleDefaults;
   provider.SdkProvider.withAwsCliCompatibleDefaults = async (options = {}) => {
-    await setSdkOptions(options, true);
+    const localEndpoint = await getLocalEndpoint();
+    await setSdkOptions(options, true); // legacy
     const result = await origConstr(options);
-    result.sdkOptions = result.sdkOptions || {};
-    await setSdkOptions(result.sdkOptions);
+    result.sdkOptions = result.sdkOptions || {}; // legacy
+    await setSdkOptions(result.sdkOptions); // legacy
+    result.requestHandler.endpoint = localEndpoint;
+    result.requestHandler.forcePathStyle = true;
     return result;
   };
 
@@ -172,7 +176,7 @@ const patchCdkToolkit = (CdkToolkit) => {
   const CdkToolkitClass = CdkToolkit.ToolkitInfo || CdkToolkit;
   getMethods(CdkToolkitClass.prototype).forEach((meth) => {
     const original = CdkToolkitClass.prototype[meth];
-    CdkToolkitClass.prototype[meth] = async function methFunc (...args) {
+    CdkToolkitClass.prototype[meth] = async function methFunc(...args) {
       await setSdkOptions(this.props.sdkProvider.sdkOptions);
       return original.bind(this).apply(this, args);
     };
@@ -181,14 +185,14 @@ const patchCdkToolkit = (CdkToolkit) => {
 
 const patchCurrentAccount = (SDK) => {
   const currentAccountOrig = SDK.prototype.currentAccount;
-  SDK.prototype.currentAccount = async function currentAccount () {
+  SDK.prototype.currentAccount = async function currentAccount() {
     const {config} = this;
     await setSdkOptions(config);
     return currentAccountOrig.bind(this)();
   };
 
   const forceCredentialRetrievalOrig = SDK.prototype.forceCredentialRetrieval;
-  SDK.prototype.forceCredentialRetrieval = function forceCredentialRetrieval () {
+  SDK.prototype.forceCredentialRetrieval = function forceCredentialRetrieval() {
     if (!this._credentials.getPromise) {
       this._credentials.getPromise = () => this._credentials;
     }
@@ -201,9 +205,9 @@ const patchToolkitInfo = (ToolkitInfo) => {
     BUCKET_NAME_OUTPUT, BUCKET_DOMAIN_NAME_OUTPUT
   } = require("aws-cdk/lib/api/bootstrap/bootstrap-props");
 
-  const setBucketUrl = function setBucketUrl (object) {
+  const setBucketUrl = function setBucketUrl(object) {
     Object.defineProperty(object, "bucketUrl", {
-      async get () {
+      async get() {
         const bucket = this.requireOutput(BUCKET_NAME_OUTPUT);
         const domain = this.requireOutput(BUCKET_DOMAIN_NAME_OUTPUT) || await getLocalHost();
         return `https://${domain.replace(`${bucket}.`, "")}:${EDGE_PORT}/${bucket}`;
@@ -236,19 +240,14 @@ const patchLambdaMounting = (CdkToolkit) => {
   // modify asset paths to enable local Lambda code mounting
 
   const lookupLambdaForAsset = (template, paramName) => {
-    const result = Object.keys(template.Resources).
-      map((key) => template.Resources[key]).
-      filter((res) => res.Type === "AWS::Lambda::Function").
-      filter((res) => JSON.stringify(res.Properties.Code.S3Key).includes(paramName));
+    const result = Object.keys(template.Resources).map((key) => template.Resources[key]).filter((res) => res.Type === "AWS::Lambda::Function").filter((res) => JSON.stringify(res.Properties.Code.S3Key).includes(paramName));
     const props = result[0].Properties;
     const funcName = props.FunctionName;
     if (funcName) {
       return funcName;
     }
     const attributes = ["Handler", "Runtime", "Description", "Timeout", "MemorySize", "Environment"];
-    const valueToHash = attributes.map((attr) => props[attr]).
-      map((val) => typeof val === "object" ? JSON.stringify(diff.canonicalize(val)) : val ? val : "").
-      join("|");
+    const valueToHash = attributes.map((attr) => props[attr]).map((val) => typeof val === "object" ? JSON.stringify(diff.canonicalize(val)) : val ? val : "").join("|");
     return md5(valueToHash);
   };
 
@@ -292,13 +291,13 @@ const patchLambdaMounting = (CdkToolkit) => {
   // symlink local Lambda assets if "cdklocal deploy" is called with LAMBDA_MOUNT_CODE=1
 
   const deployStackOrig = deployStackMod.deployStack;
-  deployStackMod.deployStack = function deployStack (options) {
+  deployStackMod.deployStack = function deployStack(options) {
     options.sdk.cloudFormationOrig = options.sdk.cloudFormationOrig || options.sdk.cloudFormation;
     const state = {};
     options.sdk.cloudFormation = () => state.instance;
     const cfn = state.instance = options.sdk.cloudFormationOrig();
     cfn.createChangeSetOrig = cfn.createChangeSetOrig || cfn.createChangeSet;
-    const createChangeSetAsync = async function createChangeSetAsync (params) {
+    const createChangeSetAsync = async function createChangeSetAsync(params) {
       if (LAMBDA_MOUNT_CODE) {
         const template = deserializeStructure(await getTemplateBody(params));
         symlinkLambdaAssets(template, params.Parameters);
@@ -315,7 +314,7 @@ const patchLambdaMounting = (CdkToolkit) => {
   const {FileAssetHandler} = importLib("cdk-assets/lib/private/handlers/files");
 
   const handlerPublish = FileAssetHandler.prototype.publish;
-  FileAssetHandler.prototype.publish = function publish () {
+  FileAssetHandler.prototype.publish = function publish() {
     if (LAMBDA_MOUNT_CODE && this.asset.destination && this.asset.source) {
       if (this.asset.source.packaging === "zip") {
         // skip uploading this asset - should get mounted via `__file__` into the Lambda container later on
@@ -328,7 +327,7 @@ const patchLambdaMounting = (CdkToolkit) => {
   // symlink local Lambda assets if "cdklocal synth" is called with LAMBDA_MOUNT_CODE=1
 
   const assemblyOrig = CdkToolkit.prototype.assembly;
-  CdkToolkit.prototype.assembly = async function assembly () {
+  CdkToolkit.prototype.assembly = async function assembly() {
     const result = await assemblyOrig.bind(this)();
     if (LAMBDA_MOUNT_CODE) {
       result.assembly.artifacts.forEach((art) => {
@@ -351,7 +350,48 @@ const isEsbuildBundle = () => {
   }
 };
 
+
+const patchSdk = (SDK, localEndpoint) => {
+  getMethods(SDK.prototype).forEach((methodName) => {
+    if (typeof SDK.prototype[methodName] === 'function') {
+      const original = SDK.prototype[methodName];
+      SDK.prototype[methodName] = function methFunc(...args) {
+        this.config.endpoint = localEndpoint;
+        this.config.forcePathStyle = true;
+        return original.apply(this, args);
+      };
+    }
+  });
+};
+
+let sdkOverwritten = false;
+const patchSdkProvider = (provider, SDK) => {
+  getMethods(provider.SdkProvider.prototype).forEach((methodName) => {
+    if (typeof provider.SdkProvider.prototype[methodName] === 'function') {
+      const original = provider.SdkProvider.prototype[methodName];
+      provider.SdkProvider.prototype[methodName] = async function methFunc(...args) {
+        const localEndpoint = await getLocalEndpoint();
+
+        if (!sdkOverwritten) {
+          // the goal is to support `SdkProvider.withAssumedRole`
+          // since it instantiates a different client (i.e. not from the SDK class)
+          this.requestHandler.endpoint = localEndpoint;
+          this.requestHandler.forcePathStyle = true;
+          // patch SDK class methods (mostly clients) to make sure the config that is created in the constructor
+          // is updated with the correct configuration
+          patchSdk(SDK, localEndpoint);
+          sdkOverwritten = true;
+        }
+        return await original.apply(this, args);
+      };
+    }
+  }
+  );
+};
+
 const applyPatches = (provider, CdkToolkit, SDK, ToolkitInfo, patchAssets = true) => {
+  patchSdkProvider(provider, SDK);
+  // TODO: a lot of the patches are not really needed for newer versions
   patchProviderCredentials(provider);
   patchCdkToolkit(CdkToolkit);
   patchCurrentAccount(SDK);
@@ -366,7 +406,7 @@ const patchPre_2_14 = () => {
   var provider = null;
   try {
     provider = require("aws-cdk/lib/api/aws-auth");
-  } catch(e) {
+  } catch (e) {
     if (e.code == "MODULE_NOT_FOUND") {
       console.log(e);
       console.error("`aws-cdk` module NOT found! Have you tried adding it to your `NODE_PATH`?");
@@ -386,7 +426,7 @@ const patchPost_2_14 = () => {
   var lib = null;
   try {
     lib = require("aws-cdk/lib");
-  } catch(e) {
+  } catch (e) {
     if (e.code == "MODULE_NOT_FOUND") {
       console.log(e);
       console.log("`aws-cdk` module NOT found! Have you tried to add it to your `NODE_PATH`?");

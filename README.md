@@ -77,6 +77,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 2.19.0: Add support for aws-cdk versions >= `2.167.0`
 * 2.18.1: Throw better exception if `aws-cdk` not found
 * 2.18.0: Add support for AWS_ENDPOINT_URL, USE_SSL, and BUCKET_MARKER_LOCAL configurations
 * 2.17.0: Fix IPv4 fallback check to prevent IPv6 connection issue with `localhost` on macOS

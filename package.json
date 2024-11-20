@@ -23,5 +23,10 @@
   "repository": {
     "url": "https://github.com/localstack/aws-cdk-local.git",
     "type": "git"
-  }
+  },
+  "files": [
+    "bin/",
+    "LICENSE",
+    "README.md"
+  ]
 }

@@ -19,7 +19,7 @@ env:
   AWS_SECRET_ACCESS_KEY: test
 
 jobs:
-  integration-python-test:
+  dynamic-cdk-version-testing:
     runs-on: ubuntu-latest
 
     strategy:

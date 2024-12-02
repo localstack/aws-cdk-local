@@ -1,0 +1,133 @@
+name: Regression Tests (Python)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    - cron: '0 5 * * *'  # once daily at 5AM
+  workflow_dispatch:
+    inputs:
+      cdk-version:
+        description: Upstream aws-cdk version to use in tests
+        required: false
+env:
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+
+jobs:
+  integration-python-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: ['22.x']
+        python-version: ['3.12']
+        region: ['us-east-1']
+        cdk-version: ${{ fromJson(inputs.cdk-version || '[ "2.166.0", "2.167.0"]') }}
+      fail-fast: true
+
+    env:
+      AWS_REGION: ${{ matrix.region }}
+      AWS_DEFAULT_REGION: ${{ matrix.region }}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: repo
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: '${{ matrix.python-version }}'
+
+      - name: Install dependencies for aws-cdk-local
+        working-directory: repo
+        run: |
+          npm install
+          echo "$(pwd)/bin" >> $GITHUB_PATH
+
+      - name: Install specific aws-cdk version
+        working-directory: repo
+        run:  |
+          if [ -n "${{ matrix.cdk-version }}" ]; then
+            npm install aws-cdk@${{ matrix.cdk-version }}
+          else
+            npm install aws-cdk
+          fi
+
+      - name: Verify specific aws-cdk version is used by cdklocal
+        run: |
+          if [ -n "${{ matrix.cdk-version }}" ]; then
+            [[ $(cdklocal --version) =~ ^${{ matrix.cdk-version }}.* ]] || exit 1
+          else
+            echo "Latest version installed, skipping version verification."
+          fi
+
+      - name: Install AWS CLI
+        run: pip install awscli
+
+      - name: Install localstack CLI
+        run: pip install localstack
+
+      - name: Start and wait for localstack (Community)
+        timeout-minutes: 10
+        run: |
+          # Check if the localstack-main container is already running
+          if ! docker ps --filter "name=localstack-main" --filter "status=running" -q; then
+            echo "LocalStack container is not running. Starting LocalStack..."
+            docker pull localstack/localstack:latest
+            localstack start -d
+            localstack wait -t 30
+          else
+            echo "LocalStack container is already running. Skipping start."
+          fi
+
+      - name: Set up unique folder
+        run: |
+          export WORK_DIR="cdk-test-$GITHUB_RUN_NUMBER"
+          export STACK_NAME="CdkTest${GITHUB_RUN_NUMBER}Stack"
+          mkdir -p $WORK_DIR
+          echo "WORK_DIR=$WORK_DIR" >> $GITHUB_ENV
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+
+      - name: Initialize new CDK app
+        run: |
+          cd $WORK_DIR
+          cdklocal init app --language=python
+
+      - name: Install python libs
+        run: |
+          cd $WORK_DIR
+          source .venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Run bootstrap
+        timeout-minutes: 1
+        run: |
+          cd $WORK_DIR
+          source .venv/bin/activate
+          cdklocal bootstrap
+
+      - name: Deploy
+        timeout-minutes: 1
+        run: |
+          cd $WORK_DIR
+          source .venv/bin/activate
+          cdklocal deploy --require-approval=never
+
+      - name: Clean up
+        if: always()
+        run: rm -rf $WORK_DIR
+
+      - name: Verify successful deployment
+        run: |
+          [ $(aws cloudformation describe-stacks --stack-name $STACK_NAME --endpoint-url http://localhost:4566 | jq '[ .Stacks[] | select(.StackStatus == "CREATE_COMPLETE") ] | length') -eq 1 ] || exit 1

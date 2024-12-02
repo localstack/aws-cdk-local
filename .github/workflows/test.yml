@@ -27,8 +27,8 @@ jobs:
         node-version: ['22.x']
         python-version: ['3.12']
         region: ['us-east-1']
-        cdk-version: ${{ fromJson(inputs.cdk-version || '[ "2.166.0", "2.167.0"]') }}
-      fail-fast: true
+        cdk-version: ${{ fromJson(inputs.cdk-version || '[ "2.166.0", "2.167.0", ""]') }}
+      fail-fast: false
 
     env:
       AWS_REGION: ${{ matrix.region }}

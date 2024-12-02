@@ -53,7 +53,6 @@ jobs:
         working-directory: repo
         run: |
           npm install
-          echo "$(pwd)/bin" >> $GITHUB_PATH
 
       - name: Install specific aws-cdk version
         working-directory: repo
@@ -63,6 +62,7 @@ jobs:
           else
             npm install aws-cdk
           fi
+          echo "$(pwd)/bin" >> $GITHUB_PATH
 
       - name: Verify specific aws-cdk version is used by cdklocal
         run: |

@@ -53,10 +53,6 @@ jobs:
         working-directory: repo
         run: |
           npm install
-
-      - name: Install specific aws-cdk version
-        working-directory: repo
-        run:  |
           if [ -n "${{ matrix.cdk-version }}" ]; then
             npm install aws-cdk@${{ matrix.cdk-version }}
           else
@@ -123,10 +119,6 @@ jobs:
           cd $WORK_DIR
           source .venv/bin/activate
           cdklocal deploy --require-approval=never
-
-      - name: Clean up
-        if: always()
-        run: rm -rf $WORK_DIR
 
       - name: Verify successful deployment
         run: |

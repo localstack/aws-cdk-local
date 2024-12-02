@@ -15,8 +15,8 @@ on:
         description: Upstream aws-cdk version to use in tests
         required: false
 env:
-  AWS_ACCESS_KEY_ID: test
-  AWS_SECRET_ACCESS_KEY: test
+  AWS_ACCESS_KEY_ID: LSIA2KBGMF64YRBX5E0I
+  AWS_SECRET_ACCESS_KEY: ZgF037sgehvieyj4mejFnipU2HvvwnYQlBsguzLK
 
 jobs:
   dynamic-cdk-version-testing:

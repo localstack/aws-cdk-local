@@ -29,7 +29,7 @@ jobs:
       matrix:
         node-version: ['22.x']
         python-version: ['3.12']
-        cdk-version: ${{ fromJson(inputs.cdk-version || '[""]') }}
+        cdk-version: ${{ fromJson(inputs.cdk-version || '["2.166.0","2.167.0", ""]') }}
       fail-fast: False
 
 
@@ -84,15 +84,9 @@ jobs:
       - name: Start and wait for localstack (Community)
         timeout-minutes: 10
         run: |
-          # Check if the localstack-main container is already running
-          if ! docker ps --filter "name=localstack-main" --filter "status=running" -q; then
-            echo "LocalStack container is not running. Starting LocalStack..."
-            docker pull localstack/localstack:latest
-            localstack start -d
-            localstack wait -t 30
-          else
-            echo "LocalStack container is already running. Skipping start."
-          fi
+          docker pull localstack/localstack:latest
+          localstack start -d
+          localstack wait -t 30
 
       - name: Install python libs
         working-directory: ${{env.WORK_DIR}}

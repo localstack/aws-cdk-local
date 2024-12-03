@@ -29,9 +29,8 @@ jobs:
       matrix:
         node-version: ['22.x']
         python-version: ['3.12']
-#        cdk-version: ${{ fromJson(inputs.cdk-version || '[ "2.166.0", "2.167.0", ""]') }}
         cdk-version: ${{ fromJson(inputs.cdk-version || '[""]') }}
-      fail-fast: false
+      fail-fast: False
 
 
     steps:
@@ -53,10 +52,9 @@ jobs:
         working-directory: repo
         run: |
           npm install
+          npm install aws-cdk
           if [ -n "${{ matrix.cdk-version }}" ]; then
             npm install aws-cdk@${{ matrix.cdk-version }}
-          else
-            npm install aws-cdk
           fi
           echo "$(pwd)/bin" >> $GITHUB_PATH
 
@@ -68,29 +66,20 @@ jobs:
             echo "Latest version installed, skipping version verification."
           fi
 
-#      - name: Install AWS CLI
-#        run: |
-#          pip install awscli
-#          aws configure set aws_access_key_id "AKIAI44QH8DHBEXAMPLE" --profile default
-#          aws configure set aws_secret_access_key "je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY" --profile default
-#          aws configure set region "us-east-1" --profile default
-#          aws configure set output "json" --profile default
-
       - name: Install localstack CLI
         run: pip install localstack
 
       - name: Set up unique folder
         run: |
-          export WORK_DIR="cdk-test$GITHUB_RUN_NUMBER"
+          export WORK_DIR="cdk-test-$GITHUB_RUN_NUMBER"
           export STACK_NAME="CdkTest${GITHUB_RUN_NUMBER}Stack"
           mkdir -p $WORK_DIR
           echo "WORK_DIR=$WORK_DIR" >> $GITHUB_ENV
           echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
 
       - name: Initialize new CDK app
-        run: |
-          cd $WORK_DIR
-          cdklocal init app --language=python
+        working-directory: ${{env.WORK_DIR}}
+        run: cdklocal init app --language=python
 
       - name: Start and wait for localstack (Community)
         timeout-minutes: 10
@@ -106,25 +95,25 @@ jobs:
           fi
 
       - name: Install python libs
+        working-directory: ${{env.WORK_DIR}}
         run: |
-          cd $WORK_DIR
           source .venv/bin/activate
           pip install -r requirements.txt
 
       - name: Run bootstrap
         timeout-minutes: 1
+        working-directory: ${{env.WORK_DIR}}
         run: |
-          cd $WORK_DIR
           source .venv/bin/activate
           cdklocal bootstrap
 
       - name: Deploy
         timeout-minutes: 1
+        working-directory: ${{env.WORK_DIR}}
         run: |
-          cd $WORK_DIR
           source .venv/bin/activate
           cdklocal deploy --require-approval=never
 
       - name: Verify successful deployment
         run: |
-          [ $(aws cloudformation describe-stacks --stack-name $STACK_NAME --endpoint-url http://localhost:4566 | jq '[ .Stacks[] | select(.StackStatus == "CREATE_COMPLETE") ] | length') -eq 1 ] || exit 1
+          [ $(aws cloudformation describe-stacks --stack-name AppTest --endpoint-url http://localhost:4566 | jq '[ .Stacks[] | select(.StackStatus == "CREATE_COMPLETE") ] | length') -eq 1 ] || exit 1

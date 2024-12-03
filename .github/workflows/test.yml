@@ -14,9 +14,6 @@ on:
       cdk-version:
         description: Upstream aws-cdk version to use in tests
         required: false
-env:
-  AWS_ACCESS_KEY_ID: test
-  AWS_SECRET_ACCESS_KEY: test
 
 jobs:
   dynamic-cdk-version-testing:
@@ -34,6 +31,8 @@ jobs:
     env:
       AWS_REGION: ${{ matrix.region }}
       AWS_DEFAULT_REGION: ${{ matrix.region }}
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
 
     steps:
       - uses: actions/checkout@v2

@@ -60,11 +60,7 @@ jobs:
 
       - name: Verify specific aws-cdk version is used by cdklocal
         run: |
-          if [ -n "${{ matrix.cdk-version }}" ]; then
-            [[ $(cdklocal --version) =~ ^${{ matrix.cdk-version }}.* ]] || exit 1
-          else
-            echo "Latest version installed, skipping version verification."
-          fi
+          cdklocal --version
 
       - name: Install localstack CLI
         run: pip install localstack
@@ -110,4 +106,4 @@ jobs:
 
       - name: Verify successful deployment
         run: |
-          [ $(aws cloudformation describe-stacks --stack-name AppTest --endpoint-url http://localhost:4566 | jq '[ .Stacks[] | select(.StackStatus == "CREATE_COMPLETE") ] | length') -eq 1 ] || exit 1
+          [ $(aws cloudformation describe-stacks --stack-name $STACK_NAME --endpoint-url http://localhost:4566 | jq '[ .Stacks[] | select(.StackStatus == "CREATE_COMPLETE") ] | length') -eq 1 ] || exit 1

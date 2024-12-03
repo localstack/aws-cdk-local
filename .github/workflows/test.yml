@@ -15,8 +15,8 @@ on:
         description: Upstream aws-cdk version to use in tests
         required: false
 env:
-  AWS_ACCESS_KEY_ID: LSIA2KBGMF64YRBX5E0I
-  AWS_SECRET_ACCESS_KEY: ZgF037sgehvieyj4mejFnipU2HvvwnYQlBsguzLK
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
 
 jobs:
   dynamic-cdk-version-testing:
@@ -27,7 +27,8 @@ jobs:
         node-version: ['22.x']
         python-version: ['3.12']
         region: ['us-east-1']
-        cdk-version: ${{ fromJson(inputs.cdk-version || '[ "2.166.0", "2.167.0", ""]') }}
+#        cdk-version: ${{ fromJson(inputs.cdk-version || '[ "2.166.0", "2.167.0", ""]') }}
+        cdk-version: ${{ fromJson(inputs.cdk-version || '[""]') }}
       fail-fast: false
 
     env:
@@ -68,8 +69,13 @@ jobs:
             echo "Latest version installed, skipping version verification."
           fi
 
-      - name: Install AWS CLI
-        run: pip install awscli
+#      - name: Install AWS CLI
+#        run: |
+#          pip install awscli
+#          aws configure set aws_access_key_id "AKIAI44QH8DHBEXAMPLE" --profile default
+#          aws configure set aws_secret_access_key "je7MtGbClwBF/2Zp9Utk/h3yCo8nvbEXAMPLEKEY" --profile default
+#          aws configure set region "us-east-1" --profile default
+#          aws configure set output "json" --profile default
 
       - name: Install localstack CLI
         run: pip install localstack

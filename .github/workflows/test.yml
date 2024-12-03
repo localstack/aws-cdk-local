@@ -15,6 +15,10 @@ on:
         description: Upstream aws-cdk version to use in tests
         required: false
 
+env:
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+
 jobs:
   dynamic-cdk-version-testing:
     runs-on: ubuntu-latest
@@ -23,16 +27,10 @@ jobs:
       matrix:
         node-version: ['22.x']
         python-version: ['3.12']
-        region: ['us-east-1']
 #        cdk-version: ${{ fromJson(inputs.cdk-version || '[ "2.166.0", "2.167.0", ""]') }}
         cdk-version: ${{ fromJson(inputs.cdk-version || '[""]') }}
       fail-fast: false
 
-    env:
-      AWS_REGION: ${{ matrix.region }}
-      AWS_DEFAULT_REGION: ${{ matrix.region }}
-      AWS_ACCESS_KEY_ID: test
-      AWS_SECRET_ACCESS_KEY: test
 
     steps:
       - uses: actions/checkout@v2
@@ -79,6 +77,19 @@ jobs:
       - name: Install localstack CLI
         run: pip install localstack
 
+      - name: Set up unique folder
+        run: |
+          export WORK_DIR="cdk-test$GITHUB_RUN_NUMBER"
+          export STACK_NAME="CdkTest${GITHUB_RUN_NUMBER}Stack"
+          mkdir -p $WORK_DIR
+          echo "WORK_DIR=$WORK_DIR" >> $GITHUB_ENV
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+
+      - name: Initialize new CDK app
+        run: |
+          cd $WORK_DIR
+          cdklocal init app --language=python
+
       - name: Start and wait for localstack (Community)
         timeout-minutes: 10
         run: |
@@ -91,19 +102,6 @@ jobs:
           else
             echo "LocalStack container is already running. Skipping start."
           fi
-
-      - name: Set up unique folder
-        run: |
-          export WORK_DIR="cdk-test-$GITHUB_RUN_NUMBER"
-          export STACK_NAME="CdkTest${GITHUB_RUN_NUMBER}Stack"
-          mkdir -p $WORK_DIR
-          echo "WORK_DIR=$WORK_DIR" >> $GITHUB_ENV
-          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
-
-      - name: Initialize new CDK app
-        run: |
-          cd $WORK_DIR
-          cdklocal init app --language=python
 
       - name: Install python libs
         run: |

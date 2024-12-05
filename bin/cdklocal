@@ -161,8 +161,11 @@ const patchProviderCredentials = (provider) => {
     const result = await origConstr(options);
     result.sdkOptions = result.sdkOptions || {}; // legacy
     await setSdkOptions(result.sdkOptions); // legacy
-    result.requestHandler.endpoint = localEndpoint;
-    result.requestHandler.forcePathStyle = true;
+    // >= 2.167.0
+    if (result.requestHandler) {
+      result.requestHandler.endpoint = localEndpoint;
+      result.requestHandler.forcePathStyle = true;
+    }
     return result;
   };
 
@@ -372,7 +375,8 @@ const patchSdkProvider = (provider, SDK) => {
       provider.SdkProvider.prototype[methodName] = async function methFunc(...args) {
         const localEndpoint = await getLocalEndpoint();
 
-        if (!sdkOverwritten) {
+        // patch for >= 2.167.0
+        if (!sdkOverwritten && this.requestHandler) {
           // the goal is to support `SdkProvider.withAssumedRole`
           // since it instantiates a different client (i.e. not from the SDK class)
           this.requestHandler.endpoint = localEndpoint;

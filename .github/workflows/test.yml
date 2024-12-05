@@ -26,7 +26,7 @@ jobs:
   generate-cdk-version-matrix:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.env.MATRIX }}
+      matrix: ${{ steps.set-matrix.outputs.MATRIX }}
     steps:
       - name: Use Node.js ${{ inputs.node-version }}
         uses: actions/setup-node@v2
@@ -35,10 +35,10 @@ jobs:
       - name: Obtain aws-cdk versions
         id: set-matrix
         run: |
-          VERSIONS_ARRAY=$(npm show aws-cdk time --json | jq 'del(.created, .modified) | keys' -c)
+          #VERSIONS_ARRAY=$(npm show aws-cdk time --json | jq 'del(.created, .modified) | keys' -c)
+          VERSIONS_ARRAY=$(npm view aws-cdk versions --json | jq 'sort_by( [ split(".") | .[] | tonumber ] ) | .[-10:]' -c)
           MATRIX="{\"cdk-version\":$VERSIONS_ARRAY}"
-          #echo "MATRIX=$MATRIX" >> $GITHUB_ENV
-          echo "MATRIX=$MATRIX" | tee -a $GITHUB_ENV
+          echo "MATRIX=$MATRIX" >> $GITHUB_OUTPUT
  
  
   version-testing:

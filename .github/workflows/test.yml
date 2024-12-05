@@ -35,8 +35,7 @@ jobs:
       - name: Obtain aws-cdk versions
         id: set-matrix
         run: |
-          #VERSIONS_ARRAY=$(npm show aws-cdk time --json | jq 'del(.created, .modified) | keys' -c)
-          VERSIONS_ARRAY=$(npm view aws-cdk versions --json | jq 'sort_by( [ split(".") | .[] | tonumber ] ) | .[-10:]' -c)
+          VERSIONS_ARRAY=$(npm show aws-cdk time --json | jq 'del(.created, .modified) | keys' -c)
           MATRIX="{\"cdk-version\":$VERSIONS_ARRAY}"
           echo "MATRIX=$MATRIX" >> $GITHUB_OUTPUT
  

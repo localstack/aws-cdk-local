@@ -36,8 +36,8 @@ jobs:
         id: set-matrix
         run: |
           VERSIONS_ARRAY=$(npm show aws-cdk time --json | jq 'del(.created, .modified) | keys' -c)
-          echo $VERSIONS_ARRAY
-          echo "MATRIX={\"cdk-version\":$( echo "$VERSIONS_ARRAY" )}" >> $GITHUB_ENV
+          echo "MATRIX={\"cdk-version\":$VERSIONS_ARRAY)}" >> $GITHUB_ENV
+          echo $MATRIX
         shell: bash
  
  

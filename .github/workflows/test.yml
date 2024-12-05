@@ -39,7 +39,6 @@ jobs:
           MATRIX="{\"cdk-version\":$VERSIONS_ARRAY}"
           #echo "MATRIX=$MATRIX" >> $GITHUB_ENV
           echo "MATRIX=$MATRIX" | tee -a $GITHUB_ENV
-          echo $MATRIX
  
  
   version-testing:

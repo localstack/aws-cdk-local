@@ -40,19 +40,18 @@ jobs:
         id: heavy-matrix
         if: ${{ inputs.run-all-latest-cdk-versions == true }}
         run: |
-          VERSIONS_ARRAY=$(npm view aws-cdk versions --json | jq -c '.[-256:]' )
-          export MATRIX="{\"cdk-version\":$VERSIONS_ARRAY}"
+          export VERSIONS_ARRAY=$(npm view aws-cdk versions --json | jq -c '.[-256:]' )
       
       - name: Obtain default list of aws-cdk versions
         id: simple-matrix
         if: ${{ inputs.run-all-latest-cdk-versions == false }}
         run: |
-          VERSIONS_ARRAY=["1.10.0", "1.38.0", "1.95.1", "1.150.0", "2.30.0", "2.50.0", "2.75.0", "2.120.0", "2.166.0", "2.167.0", ""]
-          export MATRIX="{\"cdk-version\":$VERSIONS_ARRAY}"
+          export VERSIONS_ARRAY=["1.10.0", "1.38.0", "1.95.1", "1.150.0", "2.30.0", "2.50.0", "2.75.0", "2.120.0", "2.166.0", "2.167.0", ""]
       
       - name: Generate matrix
         id: set-matrix
         run: |
+          export MATRIX="{\"cdk-version\":$VERSIONS_ARRAY}"
           echo "MATRIX=$MATRIX" >> $GITHUB_OUTPUT
  
  

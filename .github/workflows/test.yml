@@ -51,7 +51,7 @@ jobs:
           export MATRIX="{\"cdk-version\":$VERSIONS_ARRAY}"
       
       - name: Generate matrix
-        id: simple-matrix
+        id: set-matrix
         run: |
           echo "MATRIX=$MATRIX" >> $GITHUB_OUTPUT
  

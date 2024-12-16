@@ -15,6 +15,10 @@ on:
       python-version:
         required: false
         default: '3.12'
+      run-all-latest-cdk-versions:
+        required: false
+        type: boolean
+        default: false
 
 env:
   AWS_ACCESS_KEY_ID: test
@@ -32,10 +36,19 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: ${{ inputs.node-version }}
-      - name: Obtain aws-cdk versions
+      - name: Obtain all aws-cdk latest versions
         id: set-matrix
+        if: ${{ inputs.run-all-latest-cdk-versions == true }}
         run: |
           VERSIONS_ARRAY=$(npm view aws-cdk versions --json | jq -c '.[-256:]' )
+          MATRIX="{\"cdk-version\":$VERSIONS_ARRAY}"
+          echo "MATRIX=$MATRIX" >> $GITHUB_OUTPUT
+      
+      - name: Obtain default list of aws-cdk versions
+        id: set-matrix
+        if: ${{ inputs.run-all-latest-cdk-versions == false }}
+        run: |
+          VERSIONS_ARRAY=["1.10.0", "1.38.0", "1.95.1", "1.150.0", "2.30.0", "2.50.0", "2.75.0", "2.120.0", "2.166.0", "2.167.0", ""]
           MATRIX="{\"cdk-version\":$VERSIONS_ARRAY}"
           echo "MATRIX=$MATRIX" >> $GITHUB_OUTPUT
  

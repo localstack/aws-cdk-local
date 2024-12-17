@@ -121,11 +121,11 @@ const fetchURLAsync = (url) => new Promise((resolve, reject) => {
   req.end();
 });
 
-const getTemplateBody = (params) => {
+const getTemplateBody = async (params) => {
   if (params.TemplateBody) {
     return params.TemplateBody;
   }
-  return fetchURLAsync(params.TemplateURL);
+  return await fetchURLAsync(params.TemplateURL);
 };
 
 // small import util function

@@ -125,7 +125,8 @@ const getTemplateBody = async (params) => {
   if (params.TemplateBody) {
     return params.TemplateBody;
   }
-  return await fetchURLAsync(params.TemplateURL);
+  const templateURL = await Promise.resolve(params.TemplateURL);
+  return await fetchURLAsync(templateURL);
 };
 
 // small import util function

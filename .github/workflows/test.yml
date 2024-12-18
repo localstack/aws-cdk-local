@@ -126,7 +126,7 @@ jobs:
         run: |
           source .venv/bin/activate
           if [ "${{ matrix.cdk-version }}" = "1.150.0" ]; then
-            cdk acknowledge 19836
+            cdklocal acknowledge 19836
           fi
           cdklocal bootstrap
 

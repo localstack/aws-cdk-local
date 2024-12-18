@@ -125,6 +125,9 @@ jobs:
         working-directory: ${{env.WORK_DIR}}
         run: |
           source .venv/bin/activate
+          if [ "${{ matrix.cdk-version }}" = "1.150.0" ]; then
+            cdk acknowledge 19836
+          fi
           cdklocal bootstrap
 
       - name: Deploy

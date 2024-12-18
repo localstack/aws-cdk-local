@@ -125,7 +125,7 @@ jobs:
         working-directory: ${{env.WORK_DIR}}
         run: |
           source .venv/bin/activate
-          cdk acknowledge 19836
+          cdklocal acknowledge 19836
           cdklocal bootstrap
 
       - name: Deploy

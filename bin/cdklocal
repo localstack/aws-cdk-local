@@ -18,6 +18,7 @@ const EDGE_PORT = process.env.EDGE_PORT || DEFAULT_EDGE_PORT;
 const DEFAULT_HOSTNAME = "localhost";
 const LAMBDA_MOUNT_CODE = isEnvTrue("LAMBDA_MOUNT_CODE");
 const PROTOCOL = isEnvTrue("USE_SSL") ? "https" : "http";
+const DEBUG_ON = process.env.DEBUG === "1";
 
 
 //----------------
@@ -209,7 +210,10 @@ const patchToolkitInfo = (ToolkitInfo) => {
   } = require("aws-cdk/lib/api/bootstrap/bootstrap-props");
 
   const setBucketUrl = function setBucketUrl(object, bucket, domain) {
-    console.debug("New bucketUrl", `https://${domain.replace(`${bucket}.`, "")}:${EDGE_PORT}/${bucket}`);
+    if (DEBUG_ON) {
+      console.debug("Old bucketUrl:", object.bucketUrl);
+      console.debug("New bucketUrl:", `https://${domain.replace(`${bucket}.`, "")}:${EDGE_PORT}/${bucket}`);
+    }
     Object.defineProperty(object, "bucketUrl", {
       get() {
         return `https://${domain.replace(`${bucket}.`, "")}:${EDGE_PORT}/${bucket}`;

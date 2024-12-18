@@ -126,6 +126,7 @@ const getTemplateBody = async (params) => {
     return params.TemplateBody;
   }
   const templateURL = await Promise.resolve(params.TemplateURL);
+  console.info(`Fetching template from URL: ${templateURL}`);
   return await fetchURLAsync(templateURL);
 };
 
@@ -209,30 +210,51 @@ const patchToolkitInfo = (ToolkitInfo) => {
     BUCKET_NAME_OUTPUT, BUCKET_DOMAIN_NAME_OUTPUT
   } = require("aws-cdk/lib/api/bootstrap/bootstrap-props");
 
-  const setBucketUrl = function setBucketUrl(object) {
+  const setBucketUrl = function setBucketUrl(object, bucket, domain) {
+    console.debug("New bucketUrl", `https://${domain.replace(`${bucket}.`, "")}:${EDGE_PORT}/${bucket}`);
     Object.defineProperty(object, "bucketUrl", {
-      async get() {
-        const bucket = this.requireOutput(BUCKET_NAME_OUTPUT);
-        const domain = this.requireOutput(BUCKET_DOMAIN_NAME_OUTPUT) || await getLocalHost();
+      get() {
         return `https://${domain.replace(`${bucket}.`, "")}:${EDGE_PORT}/${bucket}`;
       }
     });
   };
 
+  // Pre-fetch the necessary values for the bucket URL
+  const prefetchBucketUrl = async (object) => {
+    // Has been observed that the object is not always an instance of ToolkitInfo
+    if (object != {}) {
+      try {
+        const bucket = object.bucketName;
+        const domain = object.bucketUrl.replace("https://", "") || await getLocalHost();
+        // When object is ExistingToolkitInfo & the bucketName/bucketUrl attributes are non-null
+        setBucketUrl(object, bucket, domain);
+      } catch (e) {
+        // ToolkitInfo: bucketName/bucketUrl attributes don't exist or if implemented, they throw exceptions
+        // so the exceptions have to be ignored.
+        //
+        // The following is an example of how the bucketName/bucketUrl attributes are implemented in the BootstrapStackNotFoundInfos class:
+        // I.e.: https://github.com/aws/aws-cdk/blob/87e21d625af86873716734dd5568940d41096c45/packages/aws-cdk/lib/api/toolkit-info.ts#L190-L196
+        // 
+        // The following is an example of how the bucketName/bucketUrl attributes are implemented in the ExistingToolkitInfo class:
+        // I.e.: https://github.com/aws/aws-cdk/blob/87e21d625af86873716734dd5568940d41096c45/packages/aws-cdk/lib/api/toolkit-info.ts#L124-L130
+      }
+    }
+  };
+
   // for compatibility with with older versions of CDK
-  setBucketUrl(ToolkitInfo.prototype);
+  prefetchBucketUrl(ToolkitInfo.prototype);
 
   const cdkLookupFn = ToolkitInfo.lookup;
   ToolkitInfo.lookup = async (...args) => {
     const toolkitInfoObject = await cdkLookupFn(...args);
-    setBucketUrl(toolkitInfoObject);
+    await prefetchBucketUrl(toolkitInfoObject);
     return toolkitInfoObject;
   };
-
+  
   const fromStackFn = ToolkitInfo.fromStack;
   ToolkitInfo.fromStack = (...args) => {
     const toolkitInfoObject = fromStackFn(...args);
-    setBucketUrl(toolkitInfoObject);
+    prefetchBucketUrl(toolkitInfoObject);
     return toolkitInfoObject;
   };
 };

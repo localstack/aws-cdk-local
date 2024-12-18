@@ -206,13 +206,14 @@ const patchCurrentAccount = (SDK) => {
 
 const patchToolkitInfo = (ToolkitInfo) => {
   const setBucketUrl = function setBucketUrl(object, bucket, domain) {
+    const newBucketUrl = `https://${domain.replace(`${bucket}.`, "")}:${EDGE_PORT}/${bucket}`;
     if (DEBUG_ON) {
       console.debug("Old bucketUrl:", object.bucketUrl);
-      console.debug("New bucketUrl:", `https://${domain.replace(`${bucket}.`, "")}:${EDGE_PORT}/${bucket}`);
+      console.debug("New bucketUrl:", newBucketUrl);
     }
     Object.defineProperty(object, "bucketUrl", {
       get() {
-        return `https://${domain.replace(`${bucket}.`, "")}:${EDGE_PORT}/${bucket}`;
+        return newBucketUrl;
       }
     });
   };

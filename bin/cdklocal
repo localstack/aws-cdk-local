@@ -121,13 +121,11 @@ const fetchURLAsync = (url) => new Promise((resolve, reject) => {
   req.end();
 });
 
-const getTemplateBody = async (params) => {
+const getTemplateBody = (params) => {
   if (params.TemplateBody) {
     return params.TemplateBody;
   }
-  const templateURL = await Promise.resolve(params.TemplateURL);
-  console.info(`Fetching template from URL: ${templateURL}`);
-  return await fetchURLAsync(templateURL);
+  return fetchURLAsync(params.TemplateURL);
 };
 
 // small import util function

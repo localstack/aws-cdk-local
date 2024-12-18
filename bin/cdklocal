@@ -205,10 +205,6 @@ const patchCurrentAccount = (SDK) => {
 };
 
 const patchToolkitInfo = (ToolkitInfo) => {
-  const {
-    BUCKET_NAME_OUTPUT, BUCKET_DOMAIN_NAME_OUTPUT
-  } = require("aws-cdk/lib/api/bootstrap/bootstrap-props");
-
   const setBucketUrl = function setBucketUrl(object, bucket, domain) {
     if (DEBUG_ON) {
       console.debug("Old bucketUrl:", object.bucketUrl);

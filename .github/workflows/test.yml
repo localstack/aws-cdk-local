@@ -81,9 +81,10 @@ jobs:
         working-directory: repo
         run: |
           npm install
-          npm install aws-cdk
           if [ -n "${{ matrix.cdk-version }}" ]; then
             npm install aws-cdk@${{ matrix.cdk-version }}
+          else
+            npm install aws-cdk
           fi
           echo "$(pwd)/bin" >> $GITHUB_PATH
 

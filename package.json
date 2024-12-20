@@ -21,7 +21,7 @@
     "eslint": "^8.0.0"
   },
   "repository": {
-    "url": "https://github.com/localstack/aws-cdk-local.git",
+    "url": "git+https://github.com/localstack/aws-cdk-local.git",
     "type": "git"
   },
   "files": [

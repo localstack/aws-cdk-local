@@ -22,7 +22,7 @@ $ cdklocal --version
 (Note: Depending on your local setup, you may or may not have to use the global `npm` installation flag `-g` above.)
 
 ### Mac OS specific `MODULE_NOT_FOUND` issue
-On Mac OS, brew can be used to install AWS CDK, which might result in a `MODULE_NOT_FOUND` error from `cdklocal`.  
+On Mac OS, brew can be used to install AWS CDK, which might result in a `MODULE_NOT_FOUND` error from `cdklocal`.
 To resolve this, set the `NODE_PATH` variable pointing to your AWS CDK's `node_module` folder to expand the lookup path for modules.
 ```bash
 $ export NODE_PATH=$NODE_PATH:/opt/homebrew/Cellar/aws-cdk/<CDK_VERSION>/libexec/lib/node_modules
@@ -77,6 +77,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 2.19.1: Fix SDK compatibility with older CDK versions; Fix patched bucket location in TemplateURL
 * 2.19.0: Add support for aws-cdk versions >= `2.167.0`
 * 2.18.1: Throw better exception if `aws-cdk` not found
 * 2.18.0: Add support for AWS_ENDPOINT_URL, USE_SSL, and BUCKET_MARKER_LOCAL configurations

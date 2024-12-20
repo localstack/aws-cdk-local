@@ -18,7 +18,6 @@ const EDGE_PORT = process.env.EDGE_PORT || DEFAULT_EDGE_PORT;
 const DEFAULT_HOSTNAME = "localhost";
 const LAMBDA_MOUNT_CODE = isEnvTrue("LAMBDA_MOUNT_CODE");
 const PROTOCOL = isEnvTrue("USE_SSL") ? "https" : "http";
-const DEBUG_ON = process.env.DEBUG === "1";
 
 
 //----------------
@@ -28,6 +27,14 @@ const DEBUG_ON = process.env.DEBUG === "1";
 const getLocalEndpoint = async () => process.env.AWS_ENDPOINT_URL || `${PROTOCOL}://${await getLocalHost()}`;
 
 var resolvedHostname = undefined;
+
+const runAsyncFunctionAsSync = (asyncFn) => {
+  return (...args) => {
+    asyncFn(...args).catch((e) => {
+      console.error(e);
+    });
+  };
+};
 
 const getLocalHost = async () => {
   if (resolvedHostname) {
@@ -207,10 +214,6 @@ const patchCurrentAccount = (SDK) => {
 const patchToolkitInfo = (ToolkitInfo) => {
   const setBucketUrl = function setBucketUrl(object, bucket, domain) {
     const newBucketUrl = `https://${domain.replace(`${bucket}.`, "")}:${EDGE_PORT}/${bucket}`;
-    if (DEBUG_ON) {
-      console.debug("Old bucketUrl:", object.bucketUrl);
-      console.debug("New bucketUrl:", newBucketUrl);
-    }
     Object.defineProperty(object, "bucketUrl", {
       get() {
         return newBucketUrl;
@@ -221,7 +224,7 @@ const patchToolkitInfo = (ToolkitInfo) => {
   // Pre-fetch the necessary values for the bucket URL
   const prefetchBucketUrl = async (object) => {
     // Has been observed that the object is not always an instance of ToolkitInfo
-    if (object != {}) {
+    if (object && Object.prototype.hasOwnProperty.call(object, "bucketName") && Object.prototype.hasOwnProperty.call(object, "bucketUrl")) {
       try {
         const bucket = object.bucketName;
         const domain = object.bucketUrl.replace("https://", "") || await getLocalHost();
@@ -241,7 +244,7 @@ const patchToolkitInfo = (ToolkitInfo) => {
   };
 
   // for compatibility with with older versions of CDK
-  prefetchBucketUrl(ToolkitInfo.prototype);
+  runAsyncFunctionAsSync(prefetchBucketUrl(ToolkitInfo.prototype));
 
   const cdkLookupFn = ToolkitInfo.lookup;
   ToolkitInfo.lookup = async (...args) => {
@@ -253,7 +256,7 @@ const patchToolkitInfo = (ToolkitInfo) => {
   const fromStackFn = ToolkitInfo.fromStack;
   ToolkitInfo.fromStack = (...args) => {
     const toolkitInfoObject = fromStackFn(...args);
-    prefetchBucketUrl(toolkitInfoObject);
+    runAsyncFunctionAsSync(prefetchBucketUrl(toolkitInfoObject));
     return toolkitInfoObject;
   };
 };

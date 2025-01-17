@@ -1,0 +1,142 @@
+name: Dynamic CDK version testing
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      node-version:
+        required: false
+        default: "22.x"
+      python-version:
+        required: false
+        default: "3.12"
+      run-all-latest-cdk-versions:
+        required: false
+        type: boolean
+        default: false
+
+env:
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  AWS_REGION: us-east-1
+  AWS_DEFAULT_REGION: us-east-1
+
+jobs:
+  generate-cdk-version-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.MATRIX }}
+    steps:
+      - name: Use Node.js ${{ inputs.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ inputs.node-version }}
+      - name: Obtain all aws-cdk latest versions
+        id: heavy-matrix
+        if: ${{ inputs.run-all-latest-cdk-versions == true }}
+        run: |
+          export VERSIONS_ARRAY=$(npm view aws-cdk versions --json | jq -c '.[-256:]' )
+          echo "VERSIONS_ARRAY=$VERSIONS_ARRAY" >> $GITHUB_ENV
+
+      - name: Obtain default list of aws-cdk versions
+        id: simple-matrix
+        if: ${{ inputs.run-all-latest-cdk-versions == false }}
+        run: |
+          export VERSIONS_ARRAY='["2.30.0", "2.50.0", "2.75.0", "2.120.0", "2.166.0", "2.167.0", ""]'
+          echo "VERSIONS_ARRAY=$VERSIONS_ARRAY" >> $GITHUB_ENV
+
+      - name: Generate matrix
+        id: set-matrix
+        run: |
+          export MATRIX="{\"cdk-version\":$VERSIONS_ARRAY}"
+          echo "MATRIX=$MATRIX" >> $GITHUB_OUTPUT
+
+  version-testing:
+    runs-on: ubuntu-latest
+    needs: generate-cdk-version-matrix
+    strategy:
+      matrix: ${{fromJson(needs.generate-cdk-version-matrix.outputs.matrix)}}
+
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: repo
+
+      - name: Use Node.js ${{ inputs.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Setup Python ${{ inputs.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: "${{ inputs.python-version }}"
+
+      - name: Install dependencies for aws-cdk-local
+        working-directory: repo
+        run: |
+          npm install
+          if [ -n "${{ matrix.cdk-version }}" ]; then
+            npm install aws-cdk@${{ matrix.cdk-version }}
+          else
+            npm install aws-cdk
+          fi
+          echo "$(pwd)/bin" >> $GITHUB_PATH
+
+      - name: Verify specific aws-cdk version is used by cdklocal
+        run: |
+          cdklocal --version
+
+      - name: Install localstack CLI
+        run: pip install localstack
+
+      - name: Set up unique folder
+        run: |
+          export WORK_DIR="cdk-test-$GITHUB_RUN_NUMBER"
+          export STACK_NAME="CdkTest${GITHUB_RUN_NUMBER}Stack"
+          mkdir -p $WORK_DIR
+          echo "WORK_DIR=$WORK_DIR" >> $GITHUB_ENV
+          echo "STACK_NAME=$STACK_NAME" >> $GITHUB_ENV
+
+      - name: Initialize new CDK app
+        working-directory: ${{env.WORK_DIR}}
+        run: cdklocal init app --language=python
+
+      - name: Start and wait for localstack (Community)
+        timeout-minutes: 10
+        run: |
+          docker pull localstack/localstack:latest
+          localstack start -d
+          localstack wait -t 30
+
+      - name: Install python libs
+        working-directory: ${{env.WORK_DIR}}
+        run: |
+          source .venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Run bootstrap
+        timeout-minutes: 1
+        working-directory: ${{env.WORK_DIR}}
+        run: |
+          source .venv/bin/activate
+          if [ "${{ matrix.cdk-version }}" = "1.150.0" ]; then
+            cdklocal acknowledge 19836
+          fi
+          cdklocal bootstrap
+
+      - name: Deploy
+        timeout-minutes: 1
+        working-directory: ${{env.WORK_DIR}}
+        run: |
+          source .venv/bin/activate
+          cdklocal deploy --require-approval=never
+
+      - name: Verify successful deployment
+        run: |
+          [ $(aws cloudformation describe-stacks --stack-name $STACK_NAME --endpoint-url http://localhost:4566 | jq '[ .Stacks[] | select(.StackStatus == "CREATE_COMPLETE") ] | length') -eq 1 ] || exit 1

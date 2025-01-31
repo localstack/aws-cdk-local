@@ -478,17 +478,17 @@ const patchPost_2_14 = () => {
     require("aws-cdk/lib/legacy-exports");
   } catch (e) {
     switch (e.code) {
-      case "MODULE_NOT_FOUND":
-        // pre 2.177
-        applyPatches(lib, lib, lib.SDK, lib.ToolkitInfo, false);
-        break;
-      case "ERR_PACKAGE_PATH_NOT_EXPORTED":
-        // post 2.177
-        configureEnvironment();
-        break;
-      default:
-        // a different error
-        throw e
+    case "MODULE_NOT_FOUND":
+      // pre 2.177
+      applyPatches(lib, lib, lib.SDK, lib.ToolkitInfo, false);
+      break;
+    case "ERR_PACKAGE_PATH_NOT_EXPORTED":
+      // post 2.177
+      configureEnvironment();
+      break;
+    default:
+      // a different error
+      throw e
     }
   }
 };

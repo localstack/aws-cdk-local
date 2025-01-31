@@ -33,6 +33,7 @@ $ export NODE_PATH=$NODE_PATH:/opt/homebrew/Cellar/aws-cdk/<CDK_VERSION>/libexec
 The following environment variables can be configured:
 
 * `AWS_ENDPOINT_URL`: The endpoint URL to connect to (combination of `USE_SSL`/`LOCALSTACK_HOSTNAME`/`EDGE_PORT` below)
+* `AWS_ENDPOINT_URL_S3`: The endpoint URL to connect to (combination of `USE_SSL`/`LOCALSTACK_HOSTNAME`/`EDGE_PORT` below) for S3 requests
 * `EDGE_PORT` (deprecated): Port under which LocalStack edge service is accessible (default: `4566`)
 * `LOCALSTACK_HOSTNAME` (deprecated): Target host under which LocalStack edge service is accessible (default: `localhost`)
 * `USE_SSL` (deprecated): Whether to use SSL to connect to the LocalStack endpoint, i.e., connect via HTTPS.

@@ -47,7 +47,7 @@ jobs:
         id: simple-matrix
         if: ${{ inputs.run-all-latest-cdk-versions == false }}
         run: |
-          export VERSIONS_ARRAY='["2.30.0", "2.50.0", "2.75.0", "2.120.0", "2.166.0", "2.167.0", ""]'
+          export VERSIONS_ARRAY='["2.30.0", "2.50.0", "2.75.0", "2.120.0", "2.166.0", "2.167.0", "2.177.0", ""]'
           echo "VERSIONS_ARRAY=$VERSIONS_ARRAY" >> $GITHUB_ENV
 
       - name: Generate matrix

@@ -1,7 +1,7 @@
 {
   "name": "aws-cdk-local",
   "description": "CDK Toolkit for use with LocalStack",
-  "version": "2.19.1",
+  "version": "2.19.2",
   "bin": {
     "cdklocal": "bin/cdklocal"
   },

@@ -252,7 +252,7 @@ const patchToolkitInfo = (ToolkitInfo) => {
     await prefetchBucketUrl(toolkitInfoObject);
     return toolkitInfoObject;
   };
-  
+
   const fromStackFn = ToolkitInfo.fromStack;
   ToolkitInfo.fromStack = (...args) => {
     const toolkitInfoObject = fromStackFn(...args);
@@ -451,6 +451,13 @@ const patchPre_2_14 = () => {
   applyPatches(provider, CdkToolkit, SDK, ToolkitInfo);
 };
 
+const configureEnvironment = () => {
+  // This _must_ use localhost.localstack.cloud as we require valid subdomains of these paths to
+  // resolve. Unfortunately though `curl` seems to support subdomains of localhost, the CDK does not.
+  process.env.AWS_ENDPOINT_URL_S3 = process.env.AWS_ENDPOINT_URL_S3 || `${PROTOCOL}://s3.localhost.localstack.cloud:${EDGE_PORT}`;
+  process.env.AWS_ENDPOINT_URL = process.env.AWS_ENDPOINT_URL || `${PROTOCOL}://localhost.localstack.cloud:${EDGE_PORT}`;
+};
+
 const patchPost_2_14 = () => {
   var lib = null;
   try {
@@ -463,7 +470,27 @@ const patchPost_2_14 = () => {
     }
   }
 
-  applyPatches(lib, lib, lib.SDK, lib.ToolkitInfo, false);
+  // detect if we are using version 2.177.0 or later. This version has reorganised the package
+  // structure so that we cannot import and patch the aws-cdk package as we did for versions
+  // <2.177.0. We use the specific error raised by the node require system to determine if we are
+  // using pre or post 2.177.0.
+  try {
+    require("aws-cdk/lib/legacy-exports");
+  } catch (e) {
+    switch (e.code) {
+    case "MODULE_NOT_FOUND":
+      // pre 2.177
+      applyPatches(lib, lib, lib.SDK, lib.ToolkitInfo, false);
+      break;
+    case "ERR_PACKAGE_PATH_NOT_EXPORTED":
+      // post 2.177
+      configureEnvironment();
+      break;
+    default:
+      // a different error
+      throw e
+    }
+  }
 };
 
 if (isEsbuildBundle()) {

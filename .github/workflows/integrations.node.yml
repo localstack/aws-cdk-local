@@ -40,6 +40,7 @@ jobs:
     env:
       AWS_REGION: ${{ matrix.region }}
       AWS_DEFAULT_REGION: ${{ matrix.region }}
+      AWS_ENVAR_ALLOWLIST: AWS_REGION,AWS_DEFAULT_REGION
 
     steps:
       - uses: actions/checkout@v2

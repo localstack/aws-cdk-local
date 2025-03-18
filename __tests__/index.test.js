@@ -8,6 +8,8 @@ describe("configureEnvironment", () => {
     expect(env).toEqual({
       AWS_ACCESS_KEY_ID: "test",
       AWS_SECRET_ACCESS_KEY: "test",
+      AWS_REGION: "us-east-1",
+      AWS_DEFAULT_REGION: "us-east-1",
       AWS_ENDPOINT_URL: "http://localhost.localstack.cloud:4566",
       AWS_ENDPOINT_URL_S3: "http://s3.localhost.localstack.cloud:4566",
     });
@@ -23,6 +25,8 @@ describe("configureEnvironment", () => {
     expect(env).toEqual({
       AWS_ACCESS_KEY_ID: "test",
       AWS_SECRET_ACCESS_KEY: "test",
+      AWS_REGION: "us-east-1",
+      AWS_DEFAULT_REGION: "us-east-1",
       AWS_ENDPOINT_URL: "http://foo.bar:4567",
       AWS_ENDPOINT_URL_S3: "http://foo.bar:4567",
     });
@@ -45,6 +49,8 @@ describe("configureEnvironment", () => {
     expect(env).toEqual({
       AWS_ACCESS_KEY_ID: "test",
       AWS_SECRET_ACCESS_KEY: "test",
+      AWS_REGION: "us-east-1",
+      AWS_DEFAULT_REGION: "us-east-1",
       AWS_ENDPOINT_URL: "http://localhost.localstack.cloud:4566",
       AWS_ENDPOINT_URL_S3: "http://s3.localhost.localstack.cloud:4566",
     });
@@ -60,6 +66,8 @@ describe("configureEnvironment", () => {
       AWS_ACCESS_KEY_ID: "test",
       AWS_SECRET_ACCESS_KEY: "test",
       AWS_PROFILE: "my-profile",
+      AWS_REGION: "us-east-1",
+      AWS_DEFAULT_REGION: "us-east-1",
       AWS_ENDPOINT_URL: "http://localhost.localstack.cloud:4566",
       AWS_ENDPOINT_URL_S3: "http://s3.localhost.localstack.cloud:4566",
     });
@@ -75,6 +83,25 @@ describe("configureEnvironment", () => {
     expect(env).toEqual({
       AWS_ACCESS_KEY_ID: "something",
       AWS_SECRET_ACCESS_KEY: "else",
+      AWS_REGION: "us-east-1",
+      AWS_DEFAULT_REGION: "us-east-1",
+      AWS_ENDPOINT_URL: "http://localhost.localstack.cloud:4566",
+      AWS_ENDPOINT_URL_S3: "http://s3.localhost.localstack.cloud:4566",
+    });
+  });
+
+  test("region overriding", () => {
+    const env = {
+      AWS_REGION: "eu-central-1",
+      AWS_DEFAULT_REGION: "eu-central-1",
+    };
+    const allowListStr = "AWS_REGION,AWS_DEFAULT_REGION";
+    configureEnvironment(env, allowListStr);
+    expect(env).toEqual({
+      AWS_ACCESS_KEY_ID: "test",
+      AWS_SECRET_ACCESS_KEY: "test",
+      AWS_REGION: "eu-central-1",
+      AWS_DEFAULT_REGION: "eu-central-1",
       AWS_ENDPOINT_URL: "http://localhost.localstack.cloud:4566",
       AWS_ENDPOINT_URL_S3: "http://s3.localhost.localstack.cloud:4566",
     });

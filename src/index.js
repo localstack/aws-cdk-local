@@ -56,6 +56,10 @@ const configureEnvironment = (env, allowListStr) => {
   env.AWS_ACCESS_KEY_ID = env.AWS_ACCESS_KEY_ID || "test";
   env.AWS_SECRET_ACCESS_KEY = env.AWS_SECRET_ACCESS_KEY || "test";
 
+  // take region information from the environment if allowlisted
+  env.AWS_REGION = env.AWS_REGION || "us-east-1";
+  env.AWS_DEFAULT_REGION = env.AWS_DEFAULT_REGION || env.AWS_REGION;
+
   // Explicitly set AWS_ENDPOINT_URL* to configure network access to LocalStack
   // This _must_ use localhost.localstack.cloud as we require valid subdomains of these paths to
   // resolve. Unfortunately though `curl` seems to support subdomains of localhost, the CDK does not.

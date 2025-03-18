@@ -88,6 +88,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 3.0.0: Sanitise environment of configuration environment variables before deployment
 * 2.19.2: Fix SDK compatibility with aws-cdk versions >= 2.177.0
 * 2.19.1: Fix SDK compatibility with older CDK versions; Fix patched bucket location in TemplateURL
 * 2.19.0: Add support for aws-cdk versions >= `2.167.0`

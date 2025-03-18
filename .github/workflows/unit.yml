@@ -1,0 +1,35 @@
+name: Unit tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      node-version:
+        required: false
+        default: "22.x"
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          path: repo
+
+      - name: Use Node.js ${{ inputs.node-version }}
+        uses: actions/setup-node@v2
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Install project
+        run: |
+          npm ci
+
+      - name: Run tests
+        run: |
+          npm run test
+
+

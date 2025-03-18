@@ -32,7 +32,7 @@ jobs:
 
       - name: Install project
         run: |
-          npm ci
+          npm install
 
       - name: Run tests
         run: |

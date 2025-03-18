@@ -7,7 +7,9 @@
   },
   "scripts": {
     "lint": "eslint bin/cdklocal",
-    "format": "eslint --fix bin/cdklocal"
+    "format": "eslint --fix bin/cdklocal",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "author": {
     "name": "LocalStack",
@@ -18,7 +20,10 @@
     "diff": "^5.0.0"
   },
   "devDependencies": {
-    "eslint": "^8.0.0"
+    "eslint": "^8.0.0",
+    "jest": "^29.7.0",
+    "aws-cdk": "^2.1004.0",
+    "aws-cdk-lib": "^2.184.1"
   },
   "repository": {
     "url": "git+https://github.com/localstack/aws-cdk-local.git",

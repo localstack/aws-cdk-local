@@ -2,6 +2,7 @@
   "name": "aws-cdk-local",
   "description": "CDK Toolkit for use with LocalStack",
   "version": "2.19.2",
+  "main": "src/index.js",
   "bin": {
     "cdklocal": "bin/cdklocal"
   },

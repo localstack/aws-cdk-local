@@ -9,15 +9,13 @@ const https = require("https");
 const crypto = require("crypto");
 const net = require('net');
 
+const { isEnvTrue, EDGE_PORT, PROTOCOL, configureEnvironment } = require("../src");
+
 // constants and custom config values
 
-const isEnvTrue = (envName) => ["1", "true"].includes(process.env[envName]);
-
-const DEFAULT_EDGE_PORT = 4566;
-const EDGE_PORT = process.env.EDGE_PORT || DEFAULT_EDGE_PORT;
 const DEFAULT_HOSTNAME = "localhost";
 const LAMBDA_MOUNT_CODE = isEnvTrue("LAMBDA_MOUNT_CODE");
-const PROTOCOL = isEnvTrue("USE_SSL") ? "https" : "http";
+const AWS_ENVAR_ALLOWLIST = process.env.AWS_ENVAR_ALLOWLIST || "";
 
 
 //----------------
@@ -451,13 +449,6 @@ const patchPre_2_14 = () => {
   applyPatches(provider, CdkToolkit, SDK, ToolkitInfo);
 };
 
-const configureEnvironment = () => {
-  // This _must_ use localhost.localstack.cloud as we require valid subdomains of these paths to
-  // resolve. Unfortunately though `curl` seems to support subdomains of localhost, the CDK does not.
-  process.env.AWS_ENDPOINT_URL_S3 = process.env.AWS_ENDPOINT_URL_S3 || `${PROTOCOL}://s3.localhost.localstack.cloud:${EDGE_PORT}`;
-  process.env.AWS_ENDPOINT_URL = process.env.AWS_ENDPOINT_URL || `${PROTOCOL}://localhost.localstack.cloud:${EDGE_PORT}`;
-};
-
 const patchPost_2_14 = () => {
   var lib = null;
   try {
@@ -484,7 +475,7 @@ const patchPost_2_14 = () => {
       break;
     case "ERR_PACKAGE_PATH_NOT_EXPORTED":
       // post 2.177
-      configureEnvironment();
+      configureEnvironment(process.env, AWS_ENVAR_ALLOWLIST);
       break;
     default:
       // a different error

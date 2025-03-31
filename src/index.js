@@ -45,7 +45,6 @@ const configureEnvironment = (env, allowListStr) => {
   });
 
   // 3. remove the keys from the environment
-
   Object.keys(env).forEach((key) => {
     if (keysToRemove.includes(key)) {
       delete env[key];

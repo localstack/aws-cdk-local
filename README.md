@@ -28,12 +28,22 @@ To resolve this, set the `NODE_PATH` variable pointing to your AWS CDK's `node_m
 $ export NODE_PATH=$NODE_PATH:/opt/homebrew/Cellar/aws-cdk/<CDK_VERSION>/libexec/lib/node_modules
 ```
 
+## Version support
+
+`cdklocal` supports all installed versions of the node `aws-cdk` package, however some complications are present for `aws-cdk >= 2.177.0`.
+
+For these CDK versions, we remove AWS configuration environment variables like `AWS_PROFILE` from the shell environment before invoking the `cdk` command, and explicitly set `AWS_ENDPOINT_URL` and `AWS_ENDPOINT_URL_S3` to target LocalStack.
+
+1. We do this because other environment variables may lead to a conflicting set of configuration options, where the wrong region is used to target LocalStack, or `cdklocal` tries to deploy into upstream AWS by mistake. If individual configuration variables are needed for the deploy process (e.g. `AWS_REGION`) these configuration variables can be propagated to the `cdk` command by configuring `AWS_ENVAR_ALLOWLIST`, for example: `AWS_ENVAR_ALLOWLIST=AWS_REGION,AWS_DEFAULT_REGION AWS_DEFAULT_REGION=eu-central-1 AWS_REGION=eu-central-1 cdklocal ...`.
+2. If you are manually setting `AWS_ENDPOINT_URL`, the new value will continue to be read from the environment, however `AWS_ENDPOINT_URL_S3` _must_ also be set and should include a `.s3.` component to ensure we correctly detect S3 requests.
+
 ## Configurations
 
 The following environment variables can be configured:
 
 * `AWS_ENDPOINT_URL`: The endpoint URL to connect to (combination of `USE_SSL`/`LOCALSTACK_HOSTNAME`/`EDGE_PORT` below)
 * `AWS_ENDPOINT_URL_S3`: The endpoint URL to connect to (combination of `USE_SSL`/`LOCALSTACK_HOSTNAME`/`EDGE_PORT` below) for S3 requests
+* `AWS_ENVAR_ALLOWLIST`: Allow specific `AWS_*` environment variables to be used by the CDK
 * `EDGE_PORT` (deprecated): Port under which LocalStack edge service is accessible (default: `4566`)
 * `LOCALSTACK_HOSTNAME` (deprecated): Target host under which LocalStack edge service is accessible (default: `localhost`)
 * `USE_SSL` (deprecated): Whether to use SSL to connect to the LocalStack endpoint, i.e., connect via HTTPS.
@@ -78,6 +88,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 3.0.0: Sanitise environment of configuration environment variables before deployment
 * 2.19.2: Fix SDK compatibility with aws-cdk versions >= 2.177.0
 * 2.19.1: Fix SDK compatibility with older CDK versions; Fix patched bucket location in TemplateURL
 * 2.19.0: Add support for aws-cdk versions >= `2.167.0`

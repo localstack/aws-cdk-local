@@ -34,7 +34,7 @@ $ export NODE_PATH=$NODE_PATH:/opt/homebrew/Cellar/aws-cdk/<CDK_VERSION>/libexec
 
 For these CDK versions, we remove AWS configuration environment variables like `AWS_PROFILE` from the shell environment before invoking the `cdk` command, and explicitly set `AWS_ENDPOINT_URL` and `AWS_ENDPOINT_URL_S3` to target LocalStack.
 
-1. We do this because other environment variables may lead to a conflicting set of configuration options, where the wrong region is used to target LocalStack, or `cdklocal` tries to deploy into upstream AWS by mistake. If individual configuration variables are needed for the deploy process (e.g. `AWS_REGION`) these configuration variables can be propagated to the `cdk` command by configuring `AWS_ENVAR_ALLOWLIST`, for example: `AWS_ENVAR_ALLOWLIST=AWS_REGION,AWS_DEFAULT_REGION AWS_REGION=eu-central-1 cdklocal ...`.
+1. We do this because other environment variables may lead to a conflicting set of configuration options, where the wrong region is used to target LocalStack, or `cdklocal` tries to deploy into upstream AWS by mistake. If individual configuration variables are needed for the deploy process (e.g. `AWS_REGION`) these configuration variables can be propagated to the `cdk` command by configuring `AWS_ENVAR_ALLOWLIST`, for example: `AWS_ENVAR_ALLOWLIST=AWS_REGION,AWS_DEFAULT_REGION AWS_DEFAULT_REGION=eu-central-1 AWS_REGION=eu-central-1 cdklocal ...`.
 2. If you are manually setting `AWS_ENDPOINT_URL`, the new value will continue to be read from the environment, however `AWS_ENDPOINT_URL_S3` _must_ also be set and should include a `.s3.` component to ensure we correctly detect S3 requests.
 
 ## Configurations

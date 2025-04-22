@@ -9,7 +9,8 @@ const https = require("https");
 const crypto = require("crypto");
 const net = require('net');
 
-const { isEnvTrue, EDGE_PORT, PROTOCOL, configureEnvironment } = require("../src");
+const { isEnvTrue, EDGE_PORT, PROTOCOL, configureEnvironment } = require(path.resolve(__dirname, "..", "src"));
+const pkg = require(path.resolve(__dirname, "..", "package.json"));
 
 // constants and custom config values
 
@@ -21,6 +22,17 @@ const AWS_ENVAR_ALLOWLIST = process.env.AWS_ENVAR_ALLOWLIST || "";
 //----------------
 // UTIL FUNCTIONS
 //----------------
+
+function printVersion() {
+  try {
+    const lib = require("aws-cdk/lib");
+    const cdkVersion = require(path.join(lib.rootDir(), 'package.json')).version.replace(/\+[0-9a-f]+$/, '');
+    console.log(`cdklocal v${pkg.version}`);
+    console.log(`cdk cli version v${cdkVersion}`);
+  } catch (e) {
+    console.log(`cdklocal v${pkg.version}`);
+  }
+}
 
 const getLocalEndpoint = async () => process.env.AWS_ENDPOINT_URL || `${PROTOCOL}://${await getLocalHost()}`;
 
@@ -483,6 +495,12 @@ const patchPost_2_14 = () => {
     }
   }
 };
+
+// handle printing version information
+if (process.argv[2] === "--version" || process.argv[2] === "-v") {
+  printVersion();
+  process.exit(0);
+}
 
 if (isEsbuildBundle()) {
   // load for CDK version 2.14.0 and above

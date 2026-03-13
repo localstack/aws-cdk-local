@@ -91,12 +91,13 @@ jobs:
         working-directory: cdk-test
         run: cdklocal init app --language=${{ matrix.language }}
 
-      - name: Start and wait for localstack (Community)
+      - name: Start and wait for localstack
         timeout-minutes: 10
+        env:
+          LOCALSTACK_AUTH_TOKEN: ${{ secrets.LOCALSTACK_AUTH_TOKEN }}
         run: |
-          docker pull localstack/localstack:latest
           localstack start -d
-          localstack wait -t 30
+          localstack wait
 
       - name: Install go dependencies
         working-directory: cdk-test

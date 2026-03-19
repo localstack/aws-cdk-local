@@ -13,7 +13,8 @@ The `cdklocal` command line is published as an [npm library](https://www.npmjs.c
 $ npm install -g aws-cdk-local aws-cdk
 ...
 $ cdklocal --version
-1.65.5
+cdklocal v4.0.0
+cdk cli version v2.1111.0
 ```
 
 **Note:** Starting with version `1.65.2`, the dependency `aws-cdk` needs to be installed manually
@@ -21,21 +22,9 @@ $ cdklocal --version
 
 (Note: Depending on your local setup, you may or may not have to use the global `npm` installation flag `-g` above.)
 
-### Mac OS specific `MODULE_NOT_FOUND` issue
-On Mac OS, brew can be used to install AWS CDK, which might result in a `MODULE_NOT_FOUND` error from `cdklocal`.
-To resolve this, set the `NODE_PATH` variable pointing to your AWS CDK's `node_module` folder to expand the lookup path for modules.
-```bash
-$ export NODE_PATH=$NODE_PATH:/opt/homebrew/Cellar/aws-cdk/<CDK_VERSION>/libexec/lib/node_modules
-```
-
 ## Version support
 
-`cdklocal` supports all installed versions of the node `aws-cdk` package, however some complications are present for `aws-cdk >= 2.177.0`.
-
-For these CDK versions, we remove AWS configuration environment variables like `AWS_PROFILE` from the shell environment before invoking the `cdk` command, and explicitly set `AWS_ENDPOINT_URL` and `AWS_ENDPOINT_URL_S3` to target LocalStack.
-
-1. We do this because other environment variables may lead to a conflicting set of configuration options, where the wrong region is used to target LocalStack, or `cdklocal` tries to deploy into upstream AWS by mistake. If individual configuration variables are needed for the deploy process (e.g. `AWS_REGION`) these configuration variables can be propagated to the `cdk` command by configuring `AWS_ENVAR_ALLOWLIST`, for example: `AWS_ENVAR_ALLOWLIST=AWS_REGION,AWS_DEFAULT_REGION AWS_DEFAULT_REGION=eu-central-1 AWS_REGION=eu-central-1 cdklocal ...`.
-2. If you are manually setting `AWS_ENDPOINT_URL`, the new value will continue to be read from the environment, however `AWS_ENDPOINT_URL_S3` _must_ also be set and should include a `.s3.` component to ensure we correctly detect S3 requests.
+`cdklocal` supports the node `aws-cdk` package from v2.177.0 onwards.
 
 ## Configurations
 
@@ -88,6 +77,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 4.0.0: Drop support for `aws-cdk` versions <= 2.177.0, and add support for `aws-cdk` versions after 2026-03-01
 * 3.0.1: Using the `-v`/`--version` flag prints the cdklocal version and the version of the underlying `aws-cdk` package (if possible)
 * 3.0.0: Sanitise environment of configuration environment variables before deployment
 * 2.19.2: Fix SDK compatibility with aws-cdk versions >= 2.177.0

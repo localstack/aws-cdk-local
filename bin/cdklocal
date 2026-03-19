@@ -1,21 +1,19 @@
 #!/usr/bin/env node
 "use strict"
 
-const { execFileSync } = require("child_process");
-const path = require("path");
-
-const { configureEnvironment } = require(path.resolve(__dirname, "..", "src"));
-const pkg = require(path.resolve(__dirname, "..", "package.json"));
+const { configureEnvironment } = require("../src/index.js");
 
 const AWS_ENVAR_ALLOWLIST = process.env.AWS_ENVAR_ALLOWLIST || "";
 
 function printVersion() {
+  const pkg = require("../package.json");
+  console.log(`cdklocal v${pkg.version}`);
+
   try {
-    const cdkVersion = execFileSync('cdk', ['--version']);
-    console.log(`cdklocal v${pkg.version}`);
-    console.log(`cdk cli version ${cdkVersion}`);
+    const cdk = require("aws-cdk/package.json");
+    console.log(`cdk cli version v${cdk.version}`);
   } catch (e) {
-    console.log(`cdklocal v${pkg.version}`);
+    // swallow error
   }
 }
 

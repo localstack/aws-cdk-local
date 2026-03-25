@@ -22,7 +22,6 @@
   },
   "devDependencies": {
     "aws-cdk": "^2.1113.0",
-    "aws-cdk-lib": "^2.244.0",
     "eslint": "^8.0.0",
     "jest": "^29.7.0"
   },

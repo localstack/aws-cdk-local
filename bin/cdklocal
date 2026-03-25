@@ -8,9 +8,12 @@ const http = require("http");
 const https = require("https");
 const crypto = require("crypto");
 const net = require('net');
+const semver = require('semver');
+const { spawnSync } = require('child_process');
 
 const { isEnvTrue, EDGE_PORT, PROTOCOL, configureEnvironment } = require(path.resolve(__dirname, "..", "src"));
 const pkg = require(path.resolve(__dirname, "..", "package.json"));
+const cdkCliVersion = getCdkCliVersion()
 
 // constants and custom config values
 
@@ -18,19 +21,26 @@ const DEFAULT_HOSTNAME = "localhost";
 const LAMBDA_MOUNT_CODE = isEnvTrue("LAMBDA_MOUNT_CODE");
 const AWS_ENVAR_ALLOWLIST = process.env.AWS_ENVAR_ALLOWLIST || "";
 
+// disable the CDK legacy export warning
+process.env.CDK_DISABLE_LEGACY_EXPORT_WARNING = 1;
 
 //----------------
 // UTIL FUNCTIONS
 //----------------
+function getCdkCliVersion() {
+  try {
+    const awsCdkPkg = require("aws-cdk/package.json");
+    return awsCdkPkg.version
+  } catch (e) {
+    // swallow error
+    return undefined
+  }
+}
 
 function printVersion() {
-  try {
-    const lib = require("aws-cdk/lib");
-    const cdkVersion = require(path.join(lib.rootDir(), 'package.json')).version.replace(/\+[0-9a-f]+$/, '');
-    console.log(`cdklocal v${pkg.version}`);
-    console.log(`cdk cli version v${cdkVersion}`);
-  } catch (e) {
-    console.log(`cdklocal v${pkg.version}`);
+  console.log(`cdklocal v${pkg.version}`);
+  if (cdkCliVersion) {
+    console.log(`cdk cli version v${cdkCliVersion}`);
   }
 }
 
@@ -376,19 +386,6 @@ const patchLambdaMounting = (CdkToolkit) => {
   };
 };
 
-const isEsbuildBundle = () => {
-  // simple heuristic to determine whether this is a new esbuild bundle (CDK v2.14.0+),
-  // based on this change which replaced `__dirname` with `rootDir()`:
-  // https://github.com/aws/aws-cdk/pull/18667/files#diff-6902a5fbdd9dfe9dc5563fe7d7d156e4fd99f945ac3977390d6aaacdd0370f82
-  try {
-    const directories = require("aws-cdk/lib/util/directories");
-    return directories && directories.rootDir;
-  } catch (exc) {
-    return false;
-  }
-};
-
-
 const patchSdk = (SDK, localEndpoint) => {
   getMethods(SDK.prototype).forEach((methodName) => {
     if (typeof SDK.prototype[methodName] === 'function') {
@@ -502,14 +499,19 @@ if (process.argv[2] === "--version" || process.argv[2] === "-v") {
   process.exit(0);
 }
 
-if (isEsbuildBundle()) {
-  // load for CDK version 2.14.0 and above
-  // (v2.14.0+ uses a self-contained bundle, see https://github.com/aws/aws-cdk/pull/18667)
-  patchPost_2_14();
-} else {
-  // fall back to loading for CDK version 2.13.0 and below
-  patchPre_2_14();
+// The previous esbuild heuristic will not hold for future
+// aws-cdk versions, so we rely on comparing versions with semver.
+if (cdkCliVersion) {
+  if (semver.gte(cdkCliVersion, "2.14.0")) {
+    // load for CDK version 2.14.0 and above
+    // (v2.14.0+ uses a self-contained bundle, see https://github.com/aws/aws-cdk/pull/18667)
+    patchPost_2_14();
+  } else {
+    // fall back to loading for CDK version 2.13.0 and below
+    patchPre_2_14();
+  }
 }
 
-// load main CLI script
-require("aws-cdk/bin/cdk");
+// load main cdk CLI
+const result = spawnSync('cdk', process.argv.slice(2), { stdio: 'inherit' });
+process.exit(result.status ?? 1);

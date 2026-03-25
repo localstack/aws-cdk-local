@@ -88,6 +88,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 3.0.3: Add missing `semver` dependency
 * 3.0.2: Add support for `aws-cdk` versions after 2026-03-01 (see https://github.com/aws/aws-cdk-cli/issues/310)
 * 3.0.1: Using the `-v`/`--version` flag prints the cdklocal version and the version of the underlying `aws-cdk` package (if possible)
 * 3.0.0: Sanitise environment of configuration environment variables before deployment

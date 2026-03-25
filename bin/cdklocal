@@ -9,7 +9,7 @@ const https = require("https");
 const crypto = require("crypto");
 const net = require('net');
 const semver = require('semver');
-const { spawn } = require('child_process');
+const { spawnSync } = require('child_process');
 
 const { isEnvTrue, EDGE_PORT, PROTOCOL, configureEnvironment } = require(path.resolve(__dirname, "..", "src"));
 const pkg = require(path.resolve(__dirname, "..", "package.json"));
@@ -513,6 +513,15 @@ if (cdkCliVersion) {
 }
 
 // load main cdk CLI
-const which = require('which');
-const child = spawn(which.sync('cdk'), process.argv.slice(2), { stdio: 'inherit' });
-child.on('exit', (code) => process.exit(code ?? 1));
+try {
+  require('aws-cdk/bin/cdk')
+} catch (e) {
+  // Support newer CDK versions that do not export the cdk binary
+  if (e.code === "ERR_PACKAGE_PATH_NOT_EXPORTED") {
+    const cdkPath = path.dirname(require.resolve('aws-cdk/package.json'));
+    const result = spawnSync(path.join(cdkPath, "bin/cdk"), process.argv.slice(2), { stdio: 'inherit' });
+    process.exit(result.status ?? 1)
+  } else {
+    throw e;
+  }
+}

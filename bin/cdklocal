@@ -9,7 +9,7 @@ const https = require("https");
 const crypto = require("crypto");
 const net = require('net');
 const semver = require('semver');
-const { spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 
 const { isEnvTrue, EDGE_PORT, PROTOCOL, configureEnvironment } = require(path.resolve(__dirname, "..", "src"));
 const pkg = require(path.resolve(__dirname, "..", "package.json"));
@@ -513,5 +513,5 @@ if (cdkCliVersion) {
 }
 
 // load main cdk CLI
-const result = spawnSync('cdk', process.argv.slice(2), { stdio: 'inherit' });
-process.exit(result.status ?? 1);
+const child = spawn('cdk', process.argv.slice(2), { stdio: 'inherit' });
+child.on('exit', (code) => process.exit(code ?? 1));

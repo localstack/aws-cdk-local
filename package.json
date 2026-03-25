@@ -18,7 +18,8 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "diff": "^5.0.0"
+    "diff": "^5.0.0",
+    "semver": "^7.7.4"
   },
   "devDependencies": {
     "aws-cdk": "^2.1113.0",

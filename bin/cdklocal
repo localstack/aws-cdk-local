@@ -513,5 +513,6 @@ if (cdkCliVersion) {
 }
 
 // load main cdk CLI
-const child = spawn('cdk', process.argv.slice(2), { stdio: 'inherit' });
+const which = require('which');
+const child = spawn(which.sync('cdk'), process.argv.slice(2), { stdio: 'inherit' });
 child.on('exit', (code) => process.exit(code ?? 1));

@@ -115,6 +115,16 @@ const useLocal = () => {
   return true;
 };
 
+// require("aws-cdk/lib") resolves to legacy-exports.js which re-exports SdkProvider as a thin
+// wrapper with only static methods. The real SdkProvider (with _makeSdk and other instance
+// methods) lives in index.js. Load it directly by resolving the package root and bypassing
+// the exports field.
+const loadRealSdkProvider = () => {
+  const cdkRoot = path.dirname(require.resolve("aws-cdk/package.json"));
+  const indexLib = require(path.join(cdkRoot, "lib", "index.js"));
+  return indexLib.SdkProvider;
+};
+
 const shouldForcePathStyle = () => {
   if (isEnvTrue(process.env.AWS_S3_FORCE_PATH_STYLE)) {
     return true;
@@ -497,21 +507,16 @@ const patchPost_2_14 = () => {
     case "ERR_PACKAGE_PATH_NOT_EXPORTED":
       // post 2.177
       configureEnvironment(process.env, AWS_ENVAR_ALLOWLIST);
-      // require("aws-cdk/lib") resolves to legacy-exports.js which re-exports SdkProvider
-      // as a thin wrapper with only static methods. The real SdkProvider (with _makeSdk
-      // and other instance methods) lives in index.js. Load index.js directly by resolving
-      // the package root and bypassing the exports field, then patch _makeSdk to inject
-      // forcePathStyle:true into every SDK instance's config so S3Client uses path-style URLs.
-      // Required for remote LocalStack endpoints (e.g. *.sandbox.localstack.cloud) where
-      // the wildcard TLS cert only covers one subdomain level.
       try {
-        const cdkRoot = path.dirname(require.resolve("aws-cdk/package.json"));
-        const indexLib = require(path.join(cdkRoot, "lib", "index.js"));
-        const RealSdkProvider = indexLib.SdkProvider;
+        const RealSdkProvider = loadRealSdkProvider();
         if (RealSdkProvider && typeof RealSdkProvider.prototype._makeSdk === "function") {
           const origMakeSdk = RealSdkProvider.prototype._makeSdk;
           RealSdkProvider.prototype._makeSdk = function patchedMakeSdk(...args) {
             const sdk = origMakeSdk.apply(this, args);
+            // S3 assets are uploaded using path-style URLs (e.g. https://<host>/<bucket>/...)
+            // rather than virtual-hosted-style (e.g. https://<bucket>.<host>/...).
+            // This is required for sandbox endpoints whose wildcard TLS cert only covers
+            // one subdomain level, and can also be opted into via AWS_S3_FORCE_PATH_STYLE.
             if (sdk && sdk.config && shouldForcePathStyle()) {
               sdk.config.forcePathStyle = true;
             }

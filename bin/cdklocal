@@ -115,6 +115,28 @@ const useLocal = () => {
   return true;
 };
 
+// require("aws-cdk/lib") resolves to legacy-exports.js which re-exports SdkProvider as a thin
+// wrapper with only static methods. The real SdkProvider (with _makeSdk and other instance
+// methods) lives in index.js. Load it directly by resolving the package root and bypassing
+// the exports field.
+const loadRealSdkProvider = () => {
+  const cdkRoot = path.dirname(require.resolve("aws-cdk/package.json"));
+  const indexLib = require(path.join(cdkRoot, "lib", "index.js"));
+  return indexLib.SdkProvider;
+};
+
+const shouldForcePathStyle = () => {
+  if (isEnvTrue(process.env.AWS_S3_FORCE_PATH_STYLE)) {
+    return true;
+  }
+  const endpointUrl = process.env.AWS_ENDPOINT_URL || "";
+  try {
+    return new URL(endpointUrl).hostname.includes(".sandbox.");
+  } catch {
+    return false;
+  }
+};
+
 const md5 = s => crypto.createHash("md5").update(s).digest("hex");
 
 const getMethods = (obj) => {
@@ -485,6 +507,25 @@ const patchPost_2_14 = () => {
     case "ERR_PACKAGE_PATH_NOT_EXPORTED":
       // post 2.177
       configureEnvironment(process.env, AWS_ENVAR_ALLOWLIST);
+      try {
+        const RealSdkProvider = loadRealSdkProvider();
+        if (RealSdkProvider && typeof RealSdkProvider.prototype._makeSdk === "function") {
+          const origMakeSdk = RealSdkProvider.prototype._makeSdk;
+          RealSdkProvider.prototype._makeSdk = function patchedMakeSdk(...args) {
+            const sdk = origMakeSdk.apply(this, args);
+            // S3 assets are uploaded using path-style URLs (e.g. https://<host>/<bucket>/...)
+            // rather than virtual-hosted-style (e.g. https://<bucket>.<host>/...).
+            // This is required for sandbox endpoints whose wildcard TLS cert only covers
+            // one subdomain level, and can also be opted into via AWS_S3_FORCE_PATH_STYLE.
+            if (sdk && sdk.config && shouldForcePathStyle()) {
+              sdk.config.forcePathStyle = true;
+            }
+            return sdk;
+          };
+        }
+      } catch (patchErr) {
+        // swallow - patch is best-effort for endpoints that don't need path-style
+      }
       break;
     default:
       // a different error

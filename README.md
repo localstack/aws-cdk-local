@@ -44,11 +44,18 @@ The following environment variables can be configured:
 * `AWS_ENDPOINT_URL`: The endpoint URL to connect to (combination of `USE_SSL`/`LOCALSTACK_HOSTNAME`/`EDGE_PORT` below)
 * `AWS_ENDPOINT_URL_S3`: The endpoint URL to connect to (combination of `USE_SSL`/`LOCALSTACK_HOSTNAME`/`EDGE_PORT` below) for S3 requests
 * `AWS_ENVAR_ALLOWLIST`: Allow specific `AWS_*` environment variables to be used by the CDK
+* `AWS_S3_FORCE_PATH_STYLE`: Force path-style S3 URLs (CDK >= 2.177.0 only). Automatically enabled when `AWS_ENDPOINT_URL` hostname contains `.sandbox.`. See [Path-style S3 URLs](#path-style-s3-urls-for-remote-endpoints).
 * `EDGE_PORT` (deprecated): Port under which LocalStack edge service is accessible (default: `4566`)
 * `LOCALSTACK_HOSTNAME` (deprecated): Target host under which LocalStack edge service is accessible (default: `localhost`)
 * `USE_SSL` (deprecated): Whether to use SSL to connect to the LocalStack endpoint, i.e., connect via HTTPS.
 * `LAMBDA_MOUNT_CODE`: Whether to use local Lambda code mounting (via setting `__local__` S3 bucket name). Note: may require CDK version <2.14.0 to be fully functional.
 * `BUCKET_MARKER_LOCAL`: Magic S3 bucket name for Lambda mount and [hot reloading](https://docs.localstack.cloud/user-guide/tools/lambda-tools/hot-reloading) (default: `__local__`, will default to `hot-reload` in a future release)
+
+### Path-style S3 URLs for remote endpoints
+
+When deploying with CDK >= 2.177.0 against endpoints whose hostname contains `.sandbox.` (e.g. `*.sandbox.localstack.cloud`), asset uploads to S3 require path-style URLs. The wildcard TLS certificate for these endpoints only covers one subdomain level and cannot match virtual-hosted-style bucket addresses like `<bucket>.abc.sandbox.localstack.cloud`.
+
+`cdklocal` automatically enables path-style S3 when it detects a `.sandbox.` hostname in `AWS_ENDPOINT_URL`. You can also opt in explicitly via `AWS_S3_FORCE_PATH_STYLE=1`.
 
 ## Deploying a Sample App
 
@@ -59,9 +66,9 @@ $ cdklocal init sample-app --language=javascript
 ...
 ```
 
-Make sure that LocalStack is installed and started up with the required services:
+Make sure that LocalStack is installed and started:
 ```bash
-$ SERVICES=serverless,sqs,sns localstack start
+$ localstack start
 ```
 
 Then deploy the sample app against the local APIs via the `cdklocal` command line:

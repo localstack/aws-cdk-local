@@ -1,4 +1,4 @@
-const { configureEnvironment, EnvironmentMisconfigurationError } = require("../src");
+const { configureEnvironment, EnvironmentMisconfigurationError, LSTK_MIGRATION_URL, printDeprecationNotice } = require("../src");
 
 describe("configureEnvironment", () => {
   test("empty environment", () => {
@@ -105,5 +105,39 @@ describe("configureEnvironment", () => {
       AWS_ENDPOINT_URL: "http://localhost.localstack.cloud:4566",
       AWS_ENDPOINT_URL_S3: "http://s3.localhost.localstack.cloud:4566",
     });
+  });
+});
+
+describe("printDeprecationNotice", () => {
+  let errorSpy;
+  let originalValue;
+
+  beforeEach(() => {
+    errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    originalValue = process.env.DISABLE_DEPRECATION_NOTICE;
+    delete process.env.DISABLE_DEPRECATION_NOTICE;
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+    if (originalValue === undefined) {
+      delete process.env.DISABLE_DEPRECATION_NOTICE;
+    } else {
+      process.env.DISABLE_DEPRECATION_NOTICE = originalValue;
+    }
+  });
+
+  test("prints the notice to stderr", () => {
+    printDeprecationNotice();
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    const message = errorSpy.mock.calls[0][0];
+    expect(message).toContain("WARNING: 'cdklocal' is deprecated. Use 'lstk cdk' instead.");
+    expect(message).toContain(`${LSTK_MIGRATION_URL}\n`);
+  });
+
+  test("can be turned off", () => {
+    process.env.DISABLE_DEPRECATION_NOTICE = "1";
+    printDeprecationNotice();
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 });

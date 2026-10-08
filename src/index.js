@@ -4,6 +4,36 @@ const DEFAULT_EDGE_PORT = 4566;
 const EDGE_PORT = process.env.EDGE_PORT || DEFAULT_EDGE_PORT;
 const PROTOCOL = isEnvTrue("USE_SSL") ? "https" : "http";
 
+const LSTK_DOCS_URL = "https://docs.localstack.cloud/aws/developer-tools/running-localstack/lstk/";
+const LSTK_MIGRATION_URL = "https://docs.localstack.cloud/aws/developer-tools/running-localstack/lstk/migration/#infrastructure-as-code";
+
+// Point users to 'lstk cdk'. Goes to stderr to keep stdout clean.
+const printDeprecationNotice = () => {
+  if (isEnvTrue("DISABLE_DEPRECATION_NOTICE")) {
+    return;
+  }
+
+  const separator = "=".repeat(76);
+  console.error([
+    separator,
+    "  WARNING: 'cdklocal' is deprecated. Use 'lstk cdk' instead.",
+    separator,
+    "",
+    "  'cdklocal' no longer receives updates.",
+    "",
+    "  Get started with 'lstk', the new LocalStack CLI:",
+    `  ${LSTK_DOCS_URL}`,
+    "",
+    "  Switch your scripts and CI workflows to 'lstk cdk':",
+    `  ${LSTK_MIGRATION_URL}`,
+    "",
+    separator,
+    "",
+    "Continuing with 'cdklocal'...",
+    "",
+  ].join("\n"));
+};
+
 class EnvironmentMisconfigurationError extends Error {
   constructor(message) {
     super(message);
@@ -73,4 +103,6 @@ module.exports = {
   PROTOCOL,
   configureEnvironment,
   EnvironmentMisconfigurationError,
+  LSTK_MIGRATION_URL,
+  printDeprecationNotice,
 };

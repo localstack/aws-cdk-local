@@ -11,7 +11,7 @@ const net = require('net');
 const semver = require('semver');
 const { spawnSync } = require('child_process');
 
-const { isEnvTrue, EDGE_PORT, PROTOCOL, configureEnvironment } = require(path.resolve(__dirname, "..", "src"));
+const { isEnvTrue, EDGE_PORT, PROTOCOL, configureEnvironment, printDeprecationNotice } = require(path.resolve(__dirname, "..", "src"));
 const pkg = require(path.resolve(__dirname, "..", "package.json"));
 const cdkCliVersion = getCdkCliVersion()
 
@@ -533,6 +533,8 @@ const patchPost_2_14 = () => {
     }
   }
 };
+
+printDeprecationNotice();
 
 // handle printing version information
 if (process.argv[2] === "--version" || process.argv[2] === "-v") {

@@ -2,6 +2,14 @@
 
 # AWS Cloud Development Kit (CDK) for LocalStack
 
+> [!WARNING]
+> **`cdklocal` is deprecated. Use `lstk cdk` instead.**
+>
+> `cdklocal` no longer receives updates.
+>
+> - Get started with `lstk`, the new LocalStack CLI: [docs.localstack.cloud/.../lstk](https://docs.localstack.cloud/aws/developer-tools/running-localstack/lstk/)
+> - Switch your scripts and CI workflows to `lstk cdk`: [docs.localstack.cloud/.../lstk/migration](https://docs.localstack.cloud/aws/developer-tools/running-localstack/lstk/migration/#infrastructure-as-code)
+
 This project provides a thin wrapper script `cdklocal` for using the [AWS CDK](https://github.com/aws/aws-cdk) library against local APIs provided by [LocalStack](https://localstack.cloud).
 
 **Note:** This project replaces the [old (deprecated) repo](https://github.com/localstack/aws-cdk) which was a fork of the AWS CDK repo. Instead of forking the repo and applying changes, we now simply provide a simple wrapper script `cdklocal` which applies runtime patching. The advantage of the new approach is that you should be able to use arbitrary CDK versions under the cover.
@@ -50,6 +58,7 @@ The following environment variables can be configured:
 * `USE_SSL` (deprecated): Whether to use SSL to connect to the LocalStack endpoint, i.e., connect via HTTPS.
 * `LAMBDA_MOUNT_CODE`: Whether to use local Lambda code mounting (via setting `__local__` S3 bucket name). Note: may require CDK version <2.14.0 to be fully functional.
 * `BUCKET_MARKER_LOCAL`: Magic S3 bucket name for Lambda mount and [hot reloading](https://docs.localstack.cloud/user-guide/tools/lambda-tools/hot-reloading) (default: `__local__`, will default to `hot-reload` in a future release)
+* `DISABLE_DEPRECATION_NOTICE`: Set to `1` to hide the deprecation notice
 
 ### Path-style S3 URLs for remote endpoints
 
@@ -95,6 +104,7 @@ $ awslocal sns list-topics
 
 ## Change Log
 
+* 3.1.0: Print a deprecation notice that points to `lstk cdk`
 * 3.0.4: Fix asset publishing failures for CDK >= 2.177.0 against remote LocalStack endpoints (e.g. `*.sandbox.localstack.cloud`)
 * 3.0.3: Add missing `semver` dependency
 * 3.0.2: Add support for `aws-cdk` versions after 2026-03-01 (see https://github.com/aws/aws-cdk-cli/issues/310)

@@ -125,6 +125,10 @@ jobs:
         working-directory: ${{env.WORK_DIR}}
         run: |
           source .venv/bin/activate
+          if [ -n "${{ matrix.cdk-version }}" ]; then
+            # pin aws-cdk-lib to the lowest version the template allows, since newer libs can need a newer CLI
+            sed -i 's/^aws-cdk-lib>=\([0-9.]*\),.*/aws-cdk-lib==\1/' requirements.txt
+          fi
           pip install -r requirements.txt
 
       - name: Run bootstrap
